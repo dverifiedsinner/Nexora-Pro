@@ -8,6 +8,9 @@ interface Match {
   odds: { home: number; draw: number; away: number };
 }
 
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
 const TEAM_POOL = ['MUN', 'CHE', 'LFC', 'MCI', 'ARS', 'TOT', 'RM', 'BAR', 'NAP', 'INT', 'BVB', 'BAY', 'PSG', 'JUV', 'ATM', 'MIL'];
 
 const generateMatches = (): Match[] => {
@@ -28,6 +31,7 @@ const generateMatches = (): Match[] => {
 };
 
 export default function Games() {
+  const { userData } = useAuth();
   const [activeTab, setActiveTab] = useState<'prediction' | 'spin'>('prediction');
   const [matches, setMatches] = useState<Match[]>(generateMatches());
   const [selectedMatches, setSelectedMatches] = useState<{ id: string; pick: '1' | 'X' | '2' }[]>([]);
@@ -36,6 +40,7 @@ export default function Games() {
   const [stakingStatus, setStakingStatus] = useState<'idle' | 'processing' | 'result'>('idle');
   const [timer, setTimer] = useState(0);
   const [winResult, setWinResult] = useState<boolean | null>(null);
+  const [isProcessingStaking, setIsProcessingStaking] = useState(false);
 
   const toggleMatch = (id: string, pick: '1' | 'X' | '2') => {
     if (stakingStatus !== 'idle') return;
@@ -50,13 +55,50 @@ export default function Games() {
     });
   };
 
-  const handleStake = () => {
-    if (selectedMatches.length === 0 || Number(stakeAmount) < 500) {
+  const handleStake = async () => {
+    const amount = Number(stakeAmount);
+    if (!userData || selectedMatches.length === 0 || amount < 500) {
       alert("Minimum stake is ₦500.");
       return;
     }
-    setStakingStatus('processing');
-    setTimer(30);
+    
+    if ((userData.balances?.main || 0) < amount) {
+      alert("Insufficient Main Reservoir fuel.");
+      return;
+    }
+
+    setIsProcessingStaking(true);
+    try {
+      const newBalances = {
+        ...userData.balances,
+        main: Number(userData.balances.main) - amount
+      };
+      const newTransaction = {
+        type: 'bet',
+        title: 'VIRTUAL BET STAKE',
+        amount: -amount,
+        time: new Date().toISOString(),
+        status: 'COMMITTED'
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          balances: newBalances,
+          transactions: [...(userData.transactions || []), newTransaction]
+        })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
+
+      setStakingStatus('processing');
+      setTimer(30);
+    } catch (err) {
+      console.error(err);
+      alert("Staking protocol failed.");
+    } finally {
+      setIsProcessingStaking(false);
+    }
   };
 
   const currentOdds = (match: Match, pick: '1' | 'X' | '2') => {
@@ -65,12 +107,50 @@ export default function Games() {
     return match.odds.away;
   };
 
-  const toggleSpin = () => {
-    if (Number(spinStake) < 500) {
+  const toggleSpin = async () => {
+    const amount = Number(spinStake);
+    if (!userData || amount < 500) {
       alert("Minimum stake is ₦500 for high-velocity spins.");
       return;
     }
-    // Spin logic here
+
+    if ((userData.balances?.main || 0) < amount) {
+      alert("Insufficient Main Reservoir fuel.");
+      return;
+    }
+
+    setIsProcessingStaking(true);
+    try {
+      const newBalances = {
+        ...userData.balances,
+        main: Number(userData.balances.main) - amount
+      };
+      const newTransaction = {
+        type: 'spin',
+        title: 'NITRO SPIN STAKE',
+        amount: -amount,
+        time: new Date().toISOString(),
+        status: 'COMMITTED'
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          balances: newBalances,
+          transactions: [...(userData.transactions || []), newTransaction]
+        })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
+
+      setStakingStatus('processing');
+      setTimer(5); // Faster for spin
+    } catch (err) {
+      console.error(err);
+      alert("Spin init failed.");
+    } finally {
+      setIsProcessingStaking(false);
+    }
   };
 
   useEffect(() => {
@@ -90,11 +170,40 @@ export default function Games() {
         setTimer(t => t - 1);
       }, 1000);
     } else if (stakingStatus === 'processing' && timer === 0) {
-      setWinResult(Math.random() > 0.7);
+      const won = Math.random() > 0.7;
+      setWinResult(won);
       setStakingStatus('result');
+      
+      if (won && userData) {
+        const reward = activeTab === 'prediction' ? potentialWin : Number(spinStake) * 5;
+        
+        const processWin = async () => {
+          const newBalances = {
+            ...userData.balances,
+            investment: Number(userData.balances.investment || 0) + reward
+          };
+          const newTransaction = {
+            type: 'win',
+            title: activeTab === 'prediction' ? 'BET YIELD' : 'SPIN YIELD',
+            amount: reward,
+            time: new Date().toISOString(),
+            status: 'GRANTED'
+          };
+
+          await supabase
+            .from('profiles')
+            .update({
+              balances: newBalances,
+              transactions: [...(userData.transactions || []), newTransaction]
+            })
+            .eq('uid', userData.uid);
+        };
+
+        processWin().catch(console.error);
+      }
     }
     return () => clearInterval(interval);
-  }, [stakingStatus, timer]);
+  }, [stakingStatus, timer, userData]);
 
   const resetPrediction = () => {
     setStakingStatus('idle');
@@ -252,15 +361,15 @@ export default function Games() {
                           </div>
                           
                           <button 
-                            disabled={selectedMatches.length === 0}
+                            disabled={selectedMatches.length === 0 || isProcessingStaking || stakingStatus !== 'idle'}
                             onClick={handleStake}
                             className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 transition-all ${
-                              selectedMatches.length > 0 
+                              selectedMatches.length > 0 && !isProcessingStaking && stakingStatus === 'idle'
                                 ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20 active:scale-95' 
-                                : 'bg-white/5 text-white/20 cursor-not-allowed'
+                                : 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
                             }`}
                           >
-                            <span className="text-xs font-black uppercase tracking-widest">Commit Stake</span>
+                            <span className="text-xs font-black uppercase tracking-widest">{isProcessingStaking ? 'VERIFYING...' : 'Commit Stake'}</span>
                             <ArrowRight size={18} />
                           </button>
                        </div>
@@ -404,9 +513,10 @@ export default function Games() {
               </div>
               <button 
                 onClick={toggleSpin}
-                className="w-full btn-primary py-5 text-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 shadow-2xl shadow-cyan-500/20 border-t border-white/20 active:scale-95 transition-all"
+                disabled={stakingStatus !== 'idle' || isProcessingStaking}
+                className="w-full btn-primary py-5 text-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 shadow-2xl shadow-cyan-500/20 border-t border-white/20 active:scale-95 transition-all disabled:opacity-50"
               >
-                INITIATE <Zap size={24} className="fill-white" />
+                {isProcessingStaking ? 'INITIATING...' : <>INITIATE <Zap size={24} className="fill-white" /></>}
               </button>
               <div className="pt-8 grid grid-cols-2 gap-6">
                  <div className="glass-card p-6 bg-white/[0.02] border-white/5">

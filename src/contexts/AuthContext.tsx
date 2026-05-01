@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
 interface UserData {
   uid: string;
@@ -17,14 +16,18 @@ interface UserData {
   referralCode: string;
   referredBy: string | null;
   isAdmin: boolean;
-  createdAt: any;
+  createdAt: string;
+  transactions?: any[];
+  enrolledCourses?: string[];
+  profileUpdated?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   userData: UserData | null;
   loading: boolean;
-  signIn: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -36,64 +39,154 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        // Sync user data from Firestore
-        const userRef = doc(db, 'users', user.uid);
-        
-        // Initial check/setup
-        const userDoc = await getDoc(userRef);
-        if (!userDoc.exists()) {
-          const referredBy = localStorage.getItem('referredBy');
-          const newUser: UserData = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            balances: {
-              main: 0,
-              bonus: 500, // Welcome bonus
-              referral: 0,
-              investment: 0
-            },
-            referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-            referredBy: referredBy || null,
-            isAdmin: false,
-            createdAt: serverTimestamp()
-          };
-          await setDoc(userRef, newUser);
-          localStorage.removeItem('referredBy');
-        }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserData(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
 
-        // Listen for real-time updates
-        const unsubUser = onSnapshot(userRef, (doc) => {
-          if (doc.exists()) {
-            setUserData(doc.data() as UserData);
-          }
-          setLoading(false);
-        }, (error) => {
-          console.error("Firestore user data error:", error);
-          setLoading(false);
-        });
-
-        return () => unsubUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        await fetchUserData(currentUser.id);
       } else {
         setUserData(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserData = async (uid: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('uid', uid)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // User doesn't exist, create profile
+        const session = await supabase.auth.getSession();
+        const user = session.data.session?.user;
+        
+        if (user) {
+          const referredBy = localStorage.getItem('referredBy');
+          const newUser: UserData = {
+            uid: user.id,
+            email: user.email ?? null,
+            displayName: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'User',
+            photoURL: user.user_metadata?.avatar_url ?? null,
+            balances: {
+              main: 0,
+              bonus: 1000,
+              referral: 0,
+              investment: 0
+            },
+            referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+            referredBy: referredBy || null,
+            isAdmin: false,
+            createdAt: new Date().toISOString()
+          };
+
+          const { data: createdData, error: createError } = await supabase
+            .from('profiles')
+            .insert([newUser])
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setUserData(createdData);
+          localStorage.removeItem('referredBy');
+        }
+      } else if (data) {
+        setUserData(data);
+      }
+    } catch (err) {
+      console.error('Supabase profile error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+  };
+
+  const signUp = async (email: string, password: string, username: string) => {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: username,
+        }
+      }
+    });
+
+    if (authError) {
+      if (authError.message.includes('rate limit')) {
+        throw new Error('Action blocked by security protocols. Please wait 15 minutes before the next attempt or use a different network node.');
+      }
+      throw authError;
+    }
+
+    if (authData.user) {
+      const referredBy = localStorage.getItem('referredBy');
+      const newUser: UserData = {
+        uid: authData.user.id,
+        email: authData.user.email ?? null,
+        displayName: username,
+        photoURL: null,
+        balances: {
+          main: 0,
+          bonus: 1000,
+          referral: 0,
+          investment: 0
+        },
+        referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        referredBy: referredBy || null,
+        isAdmin: false,
+        createdAt: new Date().toISOString(),
+        transactions: [],
+        enrolledCourses: []
+      };
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([newUser]);
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Even if profile fails, user is signed up in auth
+      }
+      localStorage.removeItem('referredBy');
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <AuthContext.Provider value={{
       user,
       userData,
       loading,
-      signIn: async () => {}, // Handled in components
-      signOut: () => auth.signOut(),
+      signIn,
+      signUp,
+      signOut,
     }}>
       {children}
     </AuthContext.Provider>

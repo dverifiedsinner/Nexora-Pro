@@ -1,21 +1,15 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Zap, ArrowRight, Shield, TrendingUp, Gift, Smartphone, BookOpen, CheckSquare, Users } from 'lucide-react';
-import { signInWithGoogle } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Landing() {
-  const { user } = useAuth();
+  const { user, signIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-      navigate('/dashboard');
-    } catch (error) {
-      console.error(error);
-    }
+  const handleSignIn = () => {
+    navigate('/auth');
   };
 
   React.useEffect(() => {

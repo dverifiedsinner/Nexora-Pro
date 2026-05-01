@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Award, Clock, Star, Zap, ChevronRight, Search, Filter, AlertCircle, Check, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, updateDoc, increment, arrayUnion, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import Quiz from '../components/Quiz';
 
 export default function Courses() {
@@ -81,26 +80,50 @@ export default function Courses() {
 
     setIsEnrolling(true);
     try {
-      const userRef = doc(db, 'users', userData.uid);
+      const newBalances = {
+        ...userData.balances,
+        main: Number(userData.balances.main) - course.price
+      };
       
-      // Deduct balance
-      await updateDoc(userRef, {
-        "balances.main": increment(-course.price),
-        "enrolledCourses": arrayUnion(course.id)
-      });
+      const enrolledCourses = Array.isArray((userData as any).enrolledCourses) 
+        ? [...(userData as any).enrolledCourses, course.id]
+        : [course.id];
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          balances: newBalances,
+          enrolledCourses: enrolledCourses
+        })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
 
       // Handle Referral Commission (25%)
       if (userData.referredBy) {
-        const referrerRef = doc(db, 'users', userData.referredBy);
-        const commission = course.price * 0.25;
-        await updateDoc(referrerRef, {
-          "balances.referral": increment(commission)
-        });
+        const { data: referrer, error: refError } = await supabase
+          .from('profiles')
+          .select('balances')
+          .eq('uid', userData.referredBy)
+          .single();
+
+        if (referrer && !refError) {
+          const commission = course.price * 0.25;
+          const newRefBalances = {
+            ...referrer.balances,
+            referral: Number(referrer.balances.referral || 0) + commission
+          };
+          await supabase
+            .from('profiles')
+            .update({ balances: newRefBalances })
+            .eq('uid', userData.referredBy);
+        }
       }
 
       alert(`Successfully enrolled in ${course.title}!`);
     } catch (err) {
       console.error(err);
+      alert('Enrollment failed');
     } finally {
       setIsEnrolling(false);
     }
@@ -115,10 +138,17 @@ export default function Courses() {
     if (!userData || !selectedCourse) return;
 
     try {
-      const userRef = doc(db, 'users', userData.uid);
-      await updateDoc(userRef, {
-        "balances.investment": increment(finalEarning),
-      });
+      const newBalances = {
+        ...userData.balances,
+        investment: Number(userData.balances.investment || 0) + finalEarning
+      };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ balances: newBalances })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
       // Optionally remove from enrolled or mark as completed
     } catch (err) {
       console.error(err);

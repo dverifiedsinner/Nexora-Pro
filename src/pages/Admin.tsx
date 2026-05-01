@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
   BookOpen, 
@@ -11,21 +12,162 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 
+import { supabase } from '../lib/supabase';
+
 export default function Admin() {
   const [activeTab, setActiveTab] = React.useState<'users' | 'withdrawals' | 'courses' | 'system'>('users');
+  const [isUpdating, setIsUpdating] = React.useState(false);
+  const [users, setUsers] = React.useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = React.useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = React.useState<any | null>(null);
+  const [isEditingUser, setIsEditingUser] = React.useState(false);
 
   const [systemConfig, setSystemConfig] = React.useState({
     rewardMultiplier: '5',
     maintenanceMode: false,
     bannerHeadline: 'Quantum Yield Pro',
-    minStake: '200',
+    minStake: '500',
   });
 
   const [courseList, setCourseList] = React.useState([
-    { id: 1, title: 'Digital Marketing Mastery', price: 5000, roi: '5X', enrolled: 120, status: 'Active' },
-    { id: 2, title: 'Crypto Trading Alpha', price: 12000, roi: '5X', enrolled: 85, status: 'Active' },
-    { id: 3, title: 'UI Design Lab', price: 7000, roi: '5X', enrolled: 45, status: 'Standby' },
+    { id: '1', title: 'Digital Marketing Mastery', price: 5000, roi: '5X', enrolled: 120, status: 'Active' },
+    { id: '2', title: 'Crypto Trading Alpha', price: 12000, roi: '5X', enrolled: 85, status: 'Active' },
+    { id: '3', title: 'UI Design Lab', price: 7000, roi: '5X', enrolled: 45, status: 'Standby' },
   ]);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch Users
+        const { data: usersData } = await supabase.from('profiles').select('*');
+        if (usersData) setUsers(usersData);
+
+        // Fetch System Config
+        const { data: configData } = await supabase.from('settings').select('*').eq('id', 'system').single();
+        if (configData) setSystemConfig(configData);
+
+        // Fetch Withdrawals
+        const { data: withdrawalsData } = await supabase.from('profiles').select('*');
+        if (withdrawalsData) {
+          const allWithdrawals: any[] = [];
+          withdrawalsData.forEach(u => {
+            if (u.transactions) {
+              u.transactions.forEach((t: any) => {
+                if (t.type === 'withdrawal' && t.status === 'SETTLED') {
+                   allWithdrawals.push({ ...t, userId: u.uid, userName: u.displayName, userEmail: u.email });
+                }
+              });
+            }
+          });
+          setWithdrawals(allWithdrawals);
+        }
+
+        // Fetch Courses
+        const { data: coursesData } = await supabase.from('courses').select('*');
+        if (coursesData && coursesData.length > 0) {
+          setCourseList(coursesData);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, [activeTab]);
+
+  const handleUpdateConfig = async () => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.from('settings').upsert({ id: 'system', ...systemConfig });
+      if (error) throw error;
+      alert('Global constants synchronized.');
+    } catch (err) {
+      console.error(err);
+      alert('Sync failed');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateCourse = async (id: string, updates: any) => {
+    try {
+      const { error } = await supabase.from('courses').update(updates).eq('id', id);
+      if (error) throw error;
+      setCourseList(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const createCourse = async () => {
+    const title = prompt("Course Title:");
+    if (!title) return;
+    const priceStr = prompt("Price (₦):", "5000");
+    const price = Number(priceStr);
+    if (isNaN(price)) return;
+
+    try {
+      const newCourse = {
+        title,
+        price,
+        roi: '5X',
+        enrolled: 0,
+        status: 'Active',
+        createdAt: new Date().toISOString()
+      };
+      const { data, error } = await supabase.from('courses').insert([newCourse]).select().single();
+      if (error) throw error;
+      setCourseList(prev => [...prev, data]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteCourse = async (id: string) => {
+    if(!confirm("Terminate this curriculum node?")) return;
+    try {
+      const { error } = await supabase.from('courses').delete().eq('id', id);
+      if (error) throw error;
+      setCourseList(prev => prev.filter(c => c.id !== id));
+    } catch (err) { console.error(err); }
+  }
+
+  const handleUpdateUser = async (uid: string, updates: any) => {
+    try {
+      const { error } = await supabase.from('profiles').update(updates).eq('uid', uid);
+      if (error) throw error;
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, ...updates } : u));
+      if (selectedUser?.uid === uid) {
+        setSelectedUser({ ...selectedUser, ...updates });
+      }
+      alert('Network node updated.');
+    } catch (err) {
+      console.error(err);
+      alert('Update failed');
+    }
+  };
+
+  const approveWithdrawal = async (withdrawal: any) => {
+    try {
+      const user = users.find(u => u.uid === withdrawal.userId);
+      if (!user) return;
+
+      const updatedTransactions = user.transactions.map((t: any) => {
+        if (t.time === withdrawal.time && t.type === 'withdrawal') {
+          return { ...t, status: 'DISBURSED' };
+        }
+        return t;
+      });
+
+      const { error } = await supabase.from('profiles').update({ transactions: updatedTransactions }).eq('uid', user.uid);
+      if (error) throw error;
+      
+      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions } : u));
+      setWithdrawals(prev => prev.filter(w => w.time !== withdrawal.time));
+      alert('Fund disbursement verified.');
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -88,7 +230,10 @@ export default function Admin() {
             />
           </div>
           {activeTab === 'courses' && (
-            <button className="btn-primary py-3 px-8 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 shadow-cyan-500/20 active:scale-95 transition-all">
+            <button 
+              onClick={createCourse}
+              className="btn-primary py-3 px-8 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 shadow-cyan-500/20 active:scale-95 transition-all"
+            >
               <Plus size={18} /> New Curriculum
             </button>
           )}
@@ -106,33 +251,34 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.02] text-xs">
-                {[
-                  { name: 'John Doe', email: 'john@example.com', status: 'Active', balance: 4500 },
-                  { name: 'Alice Smith', email: 'alice@example.com', status: 'Active', balance: 1200 },
-                  { name: 'Bob Wilson', email: 'bob@example.com', status: 'Suspended', balance: 0 },
-                ].map((u, i) => (
+                {users.map((u, i) => (
                   <tr key={i} className="hover:bg-white/[0.01] transition-all group">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center font-black text-[10px] border border-white/5 group-hover:border-cyan-500/20 group-hover:text-cyan-400 transition-all">
-                          {u.name.substring(0, 2).toUpperCase()}
+                          {(u.displayName || 'UX').substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-bold text-white/90 group-hover:text-white transition-colors">{u.name}</p>
+                          <p className="font-bold text-white/90 group-hover:text-white transition-colors">{u.displayName || 'New User'}</p>
                           <p className="text-[10px] text-white/30 font-medium tracking-tight italic">{u.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                        u.status === 'Active' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-pink-500/10 text-pink-500'
-                      }`}>{u.status}</span>
+                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400">Active</span>
                     </td>
-                    <td className="px-8 py-6 text-center font-display font-black text-white/80">₦{u.balance.toLocaleString()}</td>
+                    <td className="px-8 py-6 text-center font-display font-black text-white/80">₦{Number(u.balances?.main || 0).toLocaleString()}</td>
                     <td className="px-8 py-6">
                       <div className="flex justify-end gap-3 px-1">
-                        <button className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-cyan-500/40 hover:text-cyan-400 transition-all shadow-xl"><Settings size={14} /></button>
-                        <button className="p-3 bg-pink-500/5 text-pink-500 rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all shadow-xl"><Trash2 size={14} /></button>
+                        <button 
+                          onClick={() => { setSelectedUser(u); setIsEditingUser(true); }}
+                          className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-cyan-500/40 hover:text-cyan-400 transition-all shadow-xl"
+                        >
+                          <Settings size={14} />
+                        </button>
+                        <button className="p-3 bg-pink-500/5 text-pink-500 rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all shadow-xl">
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -182,9 +328,13 @@ export default function Admin() {
                           <div className={`w-6 h-6 rounded-full bg-white transition-transform ${systemConfig.maintenanceMode ? 'translate-x-6' : 'translate-x-0'}`} />
                         </button>
                      </div>
-                     <button className="w-full btn-primary py-4 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20">
-                        Commit Global Changes
-                     </button>
+                     <button 
+                        onClick={handleUpdateConfig}
+                        disabled={isUpdating}
+                        className="w-full btn-primary py-4 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20 disabled:opacity-50"
+                      >
+                        {isUpdating ? 'SYNCING...' : 'Commit Global Changes'}
+                      </button>
                   </div>
                </div>
             </div>
@@ -218,21 +368,35 @@ export default function Admin() {
                       <div className="flex flex-col items-center gap-1">
                         <input 
                           type="text" 
-                          value={`₦${course.price.toLocaleString()}`}
+                          value={`₦${Number(course.price || 0).toLocaleString()}`}
+                          onChange={(e) => {
+                            const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                            handleUpdateCourse(course.id, { price: val });
+                          }}
                           className="bg-transparent border-none text-sm font-black text-white text-center focus:outline-none focus:text-cyan-400 w-24"
                         />
                         <span className="text-[10px] font-black text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded uppercase">{course.roi} Yield</span>
                       </div>
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                        course.status === 'Active' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-white/5 text-white/20'
-                      }`}>{course.status}</span>
+                      <button 
+                        onClick={() => handleUpdateCourse(course.id, { status: course.status === 'Active' ? 'Standby' : 'Active' })}
+                        className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                          course.status === 'Active' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-white/5 text-white/20 hover:bg-white/10'
+                        }`}
+                      >
+                        {course.status}
+                      </button>
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex justify-end gap-3">
                         <button className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-cyan-400/40 hover:text-cyan-400 transition-all"><Settings size={14} /></button>
-                        <button className="p-3 bg-pink-500/5 text-pink-500 rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all"><Trash2 size={14} /></button>
+                        <button 
+                          onClick={() => deleteCourse(course.id)}
+                          className="p-3 bg-pink-500/5 text-pink-500 rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -242,19 +406,121 @@ export default function Admin() {
           )}
 
           {activeTab === 'withdrawals' && (
-            <div className="py-24 text-center space-y-8 animate-in fade-in duration-700">
-               <div className="w-24 h-24 bg-white/5 rounded-[2.5rem] border border-white/5 flex items-center justify-center mx-auto shadow-2xl relative">
-                <CreditCard size={48} className="text-white/5" />
-                <div className="absolute inset-0 bg-cyan-500/5 blur-3xl"></div>
-               </div>
-               <div className="space-y-2">
-                 <p className="text-xl font-display font-bold tracking-tight text-white/80 italic">Clear Horizons.</p>
-                 <p className="text-xs text-white/20 uppercase font-black tracking-[0.3em] font-light">Zero pending vault authorizations detected.</p>
-               </div>
+            <div className="animate-in fade-in duration-500">
+              {withdrawals.length > 0 ? (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-white/[0.02] text-white/30 font-black text-[10px] uppercase tracking-[0.2em]">
+                      <th className="px-8 py-6">Operator</th>
+                      <th className="px-8 py-6 text-center">Amount</th>
+                      <th className="px-8 py-6 text-center">Timestamp</th>
+                      <th className="px-8 py-6 text-right">Verification</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02] text-xs">
+                    {withdrawals.map((w, i) => (
+                      <tr key={i} className="hover:bg-white/[0.01] transition-all">
+                        <td className="px-8 py-6">
+                          <p className="font-bold text-white">{w.userName}</p>
+                          <p className="text-[10px] text-white/30">{w.userEmail}</p>
+                        </td>
+                        <td className="px-8 py-6 text-center font-display font-black text-pink-400">
+                          ₦{Math.abs(w.amount).toLocaleString()}
+                        </td>
+                        <td className="px-8 py-6 text-center text-white/40">
+                          {new Date(w.time).toLocaleString()}
+                        </td>
+                        <td className="px-8 py-6">
+                          <div className="flex justify-end">
+                            <button 
+                              onClick={() => approveWithdrawal(w)}
+                              className="btn-primary py-2 px-4 text-[9px] font-black uppercase tracking-widest"
+                            >
+                              Verify Disbursement
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="py-24 text-center space-y-8">
+                  <div className="w-24 h-24 bg-white/5 rounded-[2.5rem] border border-white/5 flex items-center justify-center mx-auto shadow-2xl relative">
+                    <CreditCard size={48} className="text-white/5" />
+                    <div className="absolute inset-0 bg-cyan-500/5 blur-3xl"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xl font-display font-bold tracking-tight text-white/80 italic">Clear Horizons.</p>
+                    <p className="text-xs text-white/20 uppercase font-black tracking-[0.3em] font-light">Zero pending vault authorizations detected.</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </section>
+
+      {/* User Edit Modal */}
+      {isEditingUser && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-xl">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-xl glass-card p-10 border-white/10 space-y-8"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-2xl font-display font-black text-white italic uppercase tracking-tighter">Node Modification</h3>
+                <p className="text-xs text-white/30 uppercase font-bold tracking-widest">{selectedUser.email}</p>
+              </div>
+              <button onClick={() => setIsEditingUser(false)} className="text-white/20 hover:text-white transition-colors">
+                <Trash2 size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Protocol Authority</label>
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <span className="text-sm font-bold text-white">Admin Privileges</span>
+                  <button 
+                    onClick={() => handleUpdateUser(selectedUser.uid, { isAdmin: !selectedUser.isAdmin })}
+                    className={`w-12 h-7 rounded-full p-1 transition-all ${selectedUser.isAdmin ? 'bg-cyan-500' : 'bg-white/10'}`}
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${selectedUser.isAdmin ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Main Vault Balance</label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">₦</span>
+                  <input 
+                    type="number"
+                    value={selectedUser.balances?.main || 0}
+                    onChange={(e) => {
+                      const newBalances = { ...selectedUser.balances, main: Number(e.target.value) };
+                      handleUpdateUser(selectedUser.uid, { balances: newBalances });
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-10 pr-6 text-xl font-display font-black text-white focus:outline-none focus:border-cyan-500/40"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-white/5">
+              <button 
+                onClick={() => setIsEditingUser(false)}
+                className="w-full btn-primary py-5 text-[10px] font-black uppercase tracking-[0.4em]"
+              >
+                Sync with Network
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

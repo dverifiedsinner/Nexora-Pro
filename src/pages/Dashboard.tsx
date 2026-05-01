@@ -50,10 +50,14 @@ export default function Dashboard() {
     }
   ];
 
-  const activities = [
-    { type: 'bonus', title: 'Registration Bonus', amount: 500, time: '2 hours ago', status: 'completed' },
-    { type: 'task', title: 'Daily Login Reward', amount: 50, time: '5 hours ago', status: 'completed' },
-    { type: 'referral', title: 'New Referral: John D.', amount: 200, time: '1 day ago', status: 'completed' },
+  const activities = userData?.transactions?.slice(-5).reverse().map(t => ({
+    type: t.type,
+    title: t.title,
+    amount: t.amount,
+    time: new Date(t.time).toLocaleDateString() + ' ' + new Date(t.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    status: t.status
+  })) || [
+    { type: 'bonus', title: 'Registration Bonus', amount: 500, time: 'System', status: 'completed' },
   ];
 
   return (
@@ -64,6 +68,11 @@ export default function Dashboard() {
           <p className="text-white/40 text-sm font-light italic">Your digital empire is ready for expansion.</p>
         </div>
         <div className="flex gap-4 z-10">
+          {userData?.isAdmin && (
+            <Link to="/admin" className="btn-outline flex items-center gap-3 py-3.5 px-8 active:scale-95 transition-all text-xs font-black uppercase tracking-widest border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 shadow-emerald-500/10 shadow-lg">
+              Command Center
+            </Link>
+          )}
           <Link to="/wallet" className="btn-primary flex items-center gap-3 py-3.5 px-8 shadow-cyan-500/20 active:scale-95 transition-all group">
             <Zap size={20} className="group-hover:fill-white transition-all" /> 
             <span className="text-xs font-black uppercase tracking-widest">Fund Node</span>

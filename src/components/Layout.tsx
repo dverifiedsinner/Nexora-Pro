@@ -8,6 +8,8 @@ import {
   Wallet, 
   Users, 
   Gamepad2, 
+  UserCircle,
+  ShieldAlert,
   LogOut,
   Menu,
   X,
@@ -29,7 +31,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Wallet', icon: Wallet, path: '/wallet' },
     { name: 'Referrals', icon: Users, path: '/referrals' },
     { name: 'Games', icon: Gamepad2, path: '/games' },
+    { name: 'Profile', icon: UserCircle, path: '/profile' },
   ];
+
+  if (userData?.isAdmin || userData?.email === 'denacchy@gmail.com') {
+    navItems.push({ name: 'Admin', icon: ShieldAlert, path: '/admin' });
+  }
 
   const handleSignOut = async () => {
     await signOut();

@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Mail, Phone, Building2, CreditCard, Save, ShieldCheck, Zap, ArrowRight, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 
 export default function Profile() {
   const { userData } = useAuth();
@@ -21,11 +20,15 @@ export default function Profile() {
     if (!userData) return;
     setIsSaving(true);
     try {
-      const userRef = doc(db, 'users', userData.uid);
-      await updateDoc(userRef, {
-        ...formData,
-        profileUpdated: true
-      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          ...formData,
+          profileUpdated: true
+        })
+        .eq('uid', userData.uid);
+      
+      if (error) throw error;
       alert('Node identity synchronized successfully.');
     } catch (err) {
       console.error(err);

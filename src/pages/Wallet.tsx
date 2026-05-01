@@ -15,11 +15,168 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+import { supabase } from '../lib/supabase';
+
 export default function Wallet() {
   const { userData } = useAuth();
   const [activeTab, setActiveTab] = React.useState<'fund' | 'withdraw' | 'conversion'>('fund');
   const [conversionType, setConversionType] = React.useState<'airtime' | 'data'>('airtime');
   const [network, setNetwork] = React.useState<string>('MTN');
+  
+  // Form states
+  const [fundAmount, setFundAmount] = React.useState<string>('');
+  const [withdrawAmount, setWithdrawAmount] = React.useState<string>('');
+  const [withdrawWallet, setWithdrawWallet] = React.useState<string>('main');
+  const [withdrawAccount, setWithdrawAccount] = React.useState<string>('');
+  const [withdrawBank, setWithdrawBank] = React.useState<string>('');
+  const [convertPhone, setConvertPhone] = React.useState<string>('');
+  const [convertValue, setConvertValue] = React.useState<string>('');
+  const [convertWallet, setConvertWallet] = React.useState<string>('main');
+  const [dataPackage, setDataPackage] = React.useState<{ price: number; label: string }>({ price: 350, label: '1GB' });
+  const [isProcessing, setIsProcessing] = React.useState(false);
+
+  const handleFund = async () => {
+    const amount = Number(fundAmount);
+    if (!userData || isNaN(amount) || amount <= 0) return;
+    setIsProcessing(true);
+    try {
+      const newBalances = {
+        ...userData.balances,
+        main: Number(userData.balances.main) + amount
+      };
+      const newTransaction = {
+        type: 'funding',
+        title: 'NODE FUELING',
+        amount: amount,
+        time: new Date().toISOString(),
+        status: 'VERIFIED'
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          balances: newBalances,
+          transactions: [...(userData.transactions || []), newTransaction]
+        })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
+
+      setFundAmount('');
+      alert(`Wallet fueled successfully with ₦${amount.toLocaleString()}`);
+    } catch (err) {
+      console.error(err);
+      alert('Funding failed.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const amount = Number(withdrawAmount);
+    if (!userData || isNaN(amount) || amount < 2000) {
+      alert("Minimum withdrawal is ₦2,000.");
+      return;
+    }
+    
+    const balance = (userData.balances as any)[withdrawWallet];
+    if (balance < amount) {
+      alert(`Insufficient funds in ${withdrawWallet} vault.`);
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newBalances = {
+        ...userData.balances,
+        [withdrawWallet]: balance - amount
+      };
+      const newTransaction = {
+        type: 'withdrawal',
+        title: 'LIQUIDATION',
+        amount: -amount,
+        time: new Date().toISOString(),
+        status: 'SETTLED'
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          balances: newBalances,
+          transactions: [...(userData.transactions || []), newTransaction]
+        })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
+
+      setWithdrawAmount('');
+      alert("Withdrawal request initiated successfully.");
+    } catch (err) {
+      console.error(err);
+      alert('Liquidation failed.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!userData || !convertPhone) {
+      alert("Please provide a valid receiver link.");
+      return;
+    }
+    
+    const finalAmount = conversionType === 'airtime' ? Number(convertValue) : dataPackage.price;
+    if (isNaN(finalAmount) || finalAmount <= 0) {
+      alert("Invalid value selected.");
+      return;
+    }
+
+    const balance = (userData.balances as any)[convertWallet];
+    if (balance < finalAmount) {
+      alert("Insufficient fuel in selected reservoir.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newBalances = {
+        ...userData.balances,
+        [convertWallet]: balance - finalAmount
+      };
+      const newTransaction = {
+        type: 'conversion',
+        title: `${conversionType.toUpperCase()} SWAP`,
+        amount: -finalAmount,
+        time: new Date().toISOString(),
+        status: 'COMPLETED'
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          balances: newBalances,
+          transactions: [...(userData.transactions || []), newTransaction]
+        })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
+
+      alert(`${conversionType === 'airtime' ? 'Airtime' : 'Data'} sent successfully to ${convertPhone}`);
+    } catch (err) {
+      console.error(err);
+      alert('Conversion failed.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const dataPackages = [
+    { price: 350, label: '1GB - ₦350 (30 DAYS)', val: '1GB' },
+    { price: 650, label: '2GB - ₦650 (30 DAYS)', val: '2GB' },
+    { price: 1500, label: '5GB - ₦1,500 (30 DAYS)', val: '5GB' },
+    { price: 2800, label: '10GB - ₦2,800 (30 DAYS)', val: '10GB' },
+    { price: 5500, label: '25GB - ₦5,500 (30 DAYS)', val: '25GB' },
+  ];
 
   return (
     <div className="space-y-12 pb-12">
@@ -146,7 +303,7 @@ export default function Wallet() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     {[1000, 5000, 10000].map((amt) => (
-                      <button key={amt} className="py-5 px-4 bg-white/5 border border-white/5 rounded-2xl font-display font-black hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:text-cyan-400 transition-all text-sm shadow-xl active:scale-95">
+                      <button key={amt} onClick={() => setFundAmount(amt.toString())} className={`py-5 px-4 rounded-2xl font-display font-black transition-all text-sm shadow-xl active:scale-95 border ${fundAmount === amt.toString() ? 'bg-cyan-500 text-white border-white/20' : 'bg-white/5 border-white/5 hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:text-cyan-400'}`}>
                         ₦{amt.toLocaleString()}
                       </button>
                     ))}
@@ -155,12 +312,18 @@ export default function Wallet() {
                     <span className="absolute left-8 top-1/2 -translate-y-1/2 text-cyan-400 font-black text-xl group-focus-within:animate-pulse">₦</span>
                     <input 
                       type="number" 
+                      value={fundAmount}
+                      onChange={(e) => setFundAmount(e.target.value)}
                       placeholder="Custom Entry Amount" 
                       className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-7 pl-16 pr-8 focus:outline-none focus:border-cyan-500 transition-all text-4xl font-display font-black placeholder:text-white/10 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.5em] group-focus-within:bg-white/[0.08]"
                     />
                   </div>
-                  <button className="w-full btn-primary py-6 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all">
-                    Initiate Funding Chain
+                  <button 
+                    onClick={handleFund}
+                    disabled={isProcessing || !fundAmount}
+                    className="w-full btn-primary py-6 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isProcessing ? 'Processing Transaction...' : 'Initiate Funding Chain'}
                   </button>
                 </div>
               </div>
@@ -184,11 +347,15 @@ export default function Wallet() {
                   <div className="space-y-4">
                     <label className="text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Source Terminal</label>
                     <div className="relative group">
-                      <select className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 px-8 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-sm uppercase tracking-widest focus:bg-white/[0.08]">
-                        <option className="bg-slate-900">Main Yield Reservoir (₦{userData?.balances.main.toLocaleString()})</option>
-                        <option className="bg-slate-900">Referral Growth Vault (₦{userData?.balances.referral.toLocaleString()})</option>
-                        <option className="bg-slate-900">Bonus Reservoir (₦{userData?.balances.bonus.toLocaleString()})</option>
-                        <option className="bg-slate-900">Investment Yields (₦{userData?.balances.investment.toLocaleString()})</option>
+                      <select 
+                        value={withdrawWallet}
+                        onChange={(e) => setWithdrawWallet(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 px-8 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-sm uppercase tracking-widest focus:bg-white/[0.08]"
+                      >
+                        <option className="bg-slate-900" value="main">Main Yield Reservoir (₦{userData?.balances.main.toLocaleString()})</option>
+                        <option className="bg-slate-900" value="referral">Referral Growth Vault (₦{userData?.balances.referral.toLocaleString()})</option>
+                        <option className="bg-slate-900" value="bonus">Bonus Reservoir (₦{userData?.balances.bonus.toLocaleString()})</option>
+                        <option className="bg-slate-900" value="investment">Investment Yields (₦{userData?.balances.investment.toLocaleString()})</option>
                       </select>
                       <ArrowUpRight size={16} className="absolute right-8 top-1/2 -translate-y-1/2 text-white/20" />
                     </div>
@@ -199,6 +366,8 @@ export default function Wallet() {
                       <span className="absolute left-8 top-1/2 -translate-y-1/2 text-pink-400 font-black text-xl">₦</span>
                       <input 
                         type="number" 
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
                         placeholder="MIN 2,000" 
                         className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 pl-16 pr-8 focus:outline-none focus:border-cyan-500 transition-all font-black text-2xl placeholder:text-white/10 placeholder:text-xs placeholder:tracking-[0.2em] focus:bg-white/[0.08]"
                       />
@@ -207,9 +376,19 @@ export default function Wallet() {
                   <div className="space-y-4">
                     <label className="text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">External Settlement Account</label>
                     <div className="grid md:grid-cols-2 gap-6">
-                      <input type="text" placeholder="Account Node ID" className="bg-white/5 border border-white/10 rounded-2xl py-6 px-8 focus:outline-none focus:border-cyan-500 transition-all font-medium placeholder:text-white/10" />
-                      <select className="bg-white/5 border border-white/10 rounded-2xl py-6 px-8 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-[10px] uppercase tracking-widest">
-                        <option className="bg-slate-900">Choose Bank Node</option>
+                      <input 
+                        type="text" 
+                        value={withdrawAccount}
+                        onChange={(e) => setWithdrawAccount(e.target.value)}
+                        placeholder="Account Node ID" 
+                        className="bg-white/5 border border-white/10 rounded-2xl py-6 px-8 focus:outline-none focus:border-cyan-500 transition-all font-medium placeholder:text-white/10" 
+                      />
+                      <select 
+                        value={withdrawBank}
+                        onChange={(e) => setWithdrawBank(e.target.value)}
+                        className="bg-white/5 border border-white/10 rounded-2xl py-6 px-8 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-[10px] uppercase tracking-widest"
+                      >
+                        <option className="bg-slate-900" value="">Choose Bank Node</option>
                         <option className="bg-slate-900">ACCESS PROTOCOL</option>
                         <option className="bg-slate-900">KUDA META</option>
                         <option className="bg-slate-900">MONIEPOINT</option>
@@ -218,8 +397,12 @@ export default function Wallet() {
                       </select>
                     </div>
                   </div>
-                  <button className="w-full btn-primary py-6 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all">
-                    Execute Vault Outflow
+                  <button 
+                    onClick={handleWithdraw}
+                    disabled={isProcessing || !withdrawAmount}
+                    className="w-full btn-primary py-6 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isProcessing ? 'Processing Liquidaton...' : 'Execute Vault Outflow'}
                   </button>
                 </div>
               </div>
@@ -249,7 +432,13 @@ export default function Wallet() {
                 <div className="space-y-10">
                   <div className="space-y-4">
                     <label className="text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Receiver Link</label>
-                    <input type="tel" placeholder="080 0000 0000" className="w-full bg-white/5 border border-white/10 rounded-2xl py-7 px-10 focus:outline-none focus:border-cyan-500 transition-all font-display font-black text-3xl placeholder:text-white/5 tracking-tighter" />
+                    <input 
+                      type="tel" 
+                      value={convertPhone}
+                      onChange={(e) => setConvertPhone(e.target.value)}
+                      placeholder="080 0000 0000" 
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-7 px-10 focus:outline-none focus:border-cyan-500 transition-all font-display font-black text-3xl placeholder:text-white/5 tracking-tighter" 
+                    />
                   </div>
 
                   <div className="space-y-4">
@@ -267,12 +456,17 @@ export default function Wallet() {
                     <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                       <label className="text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Data Yield Package</label>
                       <div className="relative group">
-                         <select className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 px-10 focus:outline-none focus:border-pink-500 transition-all appearance-none cursor-pointer font-black text-xs uppercase tracking-widest focus:bg-white/[0.08]">
-                           <option className="bg-slate-900">1GB - ₦350 (30 DAYS)</option>
-                           <option className="bg-slate-900">2GB - ₦650 (30 DAYS)</option>
-                           <option className="bg-slate-900">5GB - ₦1,500 (30 DAYS)</option>
-                           <option className="bg-slate-900">10GB - ₦2,800 (30 DAYS)</option>
-                           <option className="bg-slate-900">25GB - ₦5,500 (30 DAYS)</option>
+                         <select 
+                           value={dataPackage.price}
+                           onChange={(e) => {
+                             const pkg = dataPackages.find(p => p.price === Number(e.target.value));
+                             if (pkg) setDataPackage({ price: pkg.price, label: pkg.val });
+                           }}
+                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 px-10 focus:outline-none focus:border-pink-500 transition-all appearance-none cursor-pointer font-black text-xs uppercase tracking-widest focus:bg-white/[0.08]"
+                         >
+                           {dataPackages.map(p => (
+                             <option key={p.val} value={p.price} className="bg-slate-900">{p.label}</option>
+                           ))}
                          </select>
                          <Wifi size={16} className="absolute right-10 top-1/2 -translate-y-1/2 text-pink-500 animate-pulse" />
                       </div>
@@ -284,7 +478,13 @@ export default function Wallet() {
                       <label className="text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Credit Value</label>
                       <div className="relative group">
                          <span className="absolute left-10 top-1/2 -translate-y-1/2 text-cyan-400 font-display font-black text-xl">₦</span>
-                         <input type="number" placeholder="Enter Value" className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 pl-16 pr-10 focus:outline-none focus:border-cyan-500 transition-all font-display font-black text-2xl placeholder:text-white/10" />
+                         <input 
+                           type="number" 
+                           value={convertValue}
+                           onChange={(e) => setConvertValue(e.target.value)}
+                           placeholder="Enter Value" 
+                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 pl-16 pr-10 focus:outline-none focus:border-cyan-500 transition-all font-display font-black text-2xl placeholder:text-white/10" 
+                         />
                       </div>
                     </div>
                   )}
@@ -292,17 +492,25 @@ export default function Wallet() {
                   <div className="space-y-4">
                     <label className="text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Conversion Fuel</label>
                     <div className="relative group">
-                      <select className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 px-10 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-xs uppercase tracking-widest focus:bg-white/[0.08]">
-                        <option className="bg-slate-900">MAIN YIELD (₦{userData?.balances.main.toLocaleString()})</option>
-                        <option className="bg-slate-900">BONUS RESERVOIR (₦{userData?.balances.bonus.toLocaleString()})</option>
-                        <option className="bg-slate-900">INVESTMENT WALLET (₦{userData?.balances.investment.toLocaleString()})</option>
-                        <option className="bg-slate-900">REFERRAL VAULT (₦{userData?.balances.referral.toLocaleString()})</option>
+                      <select 
+                        value={convertWallet}
+                        onChange={(e) => setConvertWallet(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 px-10 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-xs uppercase tracking-widest focus:bg-white/[0.08]"
+                      >
+                        <option className="bg-slate-900" value="main">MAIN YIELD (₦{userData?.balances.main.toLocaleString()})</option>
+                        <option className="bg-slate-900" value="bonus">BONUS RESERVOIR (₦{userData?.balances.bonus.toLocaleString()})</option>
+                        <option className="bg-slate-900" value="investment">INVESTMENT WALLET (₦{userData?.balances.investment.toLocaleString()})</option>
+                        <option className="bg-slate-900" value="referral">REFERRAL VAULT (₦{userData?.balances.referral.toLocaleString()})</option>
                       </select>
                       <Zap size={16} className="absolute right-10 top-1/2 -translate-y-1/2 text-cyan-400 animate-pulse" />
                     </div>
                   </div>
-                  <button className="w-full btn-primary py-6 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all">
-                    Initiate Asset Conversion
+                  <button 
+                    onClick={handleConvert}
+                    disabled={isProcessing}
+                    className="w-full btn-primary py-6 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isProcessing ? 'Swapping Assets...' : 'Initiate Asset Conversion'}
                   </button>
                 </div>
               </div>
@@ -319,30 +527,32 @@ export default function Wallet() {
               <button className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-cyan-400 transition-all">DEEP AUDIT</button>
             </div>
             <div className="glass-card p-3 space-y-2 border-white/5 shadow-2xl">
-              {[
-                { type: 'funding', title: 'NODE FUELING', amount: 2000, time: '3 CYCLES AGO', status: 'VERIFIED' },
-                { type: 'withdrawal', title: 'LIQUIDATION', amount: -5000, time: '1 WEEK AGO', status: 'SETTLED' },
-                { type: 'referral', title: 'NETWORK GROWTH', amount: 500, time: '2 WEEKS AGO', status: 'BONDED' },
-              ].map((t, i) => (
-                <div key={i} className="flex items-center justify-between p-6 hover:bg-white/[0.03] rounded-[2rem] transition-all cursor-pointer group active:scale-[0.98] border border-transparent hover:border-white/5">
-                  <div className="flex gap-5 items-center">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-all ${t.amount > 0 ? 'bg-cyan-500/10 text-cyan-400' : 'bg-pink-500/10 text-pink-500'}`}>
-                       {t.amount > 0 ? <ArrowDownLeft size={22} /> : <ArrowUpRight size={22} />}
-                    </div>
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-widest group-hover:text-white transition-colors">{t.title}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <p className="text-[9px] text-white/20 font-black uppercase italic">{t.time}</p>
-                        <span className="w-1 h-1 bg-white/10 rounded-full"></span>
-                        <p className="text-[8px] text-cyan-400/60 font-black uppercase tracking-[0.2em]">{t.status}</p>
+              {(userData as any)?.transactions?.length > 0 ? (
+                [...(userData as any).transactions].reverse().map((t: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-6 hover:bg-white/[0.03] rounded-[2rem] transition-all cursor-pointer group active:scale-[0.98] border border-transparent hover:border-white/5">
+                    <div className="flex gap-5 items-center">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-all ${t.amount > 0 ? 'bg-cyan-500/10 text-cyan-400' : 'bg-pink-500/10 text-pink-500'}`}>
+                         {t.amount > 0 ? <ArrowDownLeft size={22} /> : <ArrowUpRight size={22} />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest group-hover:text-white transition-colors">{t.title}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-[9px] text-white/20 font-black uppercase italic">{new Date(t.time).toLocaleDateString()}</p>
+                          <span className="w-1 h-1 bg-white/10 rounded-full"></span>
+                          <p className="text-[8px] text-cyan-400/60 font-black uppercase tracking-[0.2em]">{t.status}</p>
+                        </div>
                       </div>
                     </div>
+                    <p className={`text-xl font-display font-black ${t.amount > 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
+                      {t.amount > 0 ? '+' : '-'}₦{Math.abs(t.amount).toLocaleString()}
+                    </p>
                   </div>
-                  <p className={`text-xl font-display font-black ${t.amount > 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
-                    {t.amount > 0 ? '+' : '-'}₦{Math.abs(t.amount).toLocaleString()}
-                  </p>
+                ))
+              ) : (
+                <div className="p-12 text-center text-white/20 italic uppercase tracking-widest text-xs font-black">
+                  No records synchronized.
                 </div>
-              ))}
+              )}
             </div>
           </section>
 
