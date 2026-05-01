@@ -112,6 +112,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('referredBy');
         }
       } else if (data) {
+        // Special case: Promote specific user to admin if they are the owner/developer
+        if (data.email === 'denacchy@gmail.com' && !data.isAdmin) {
+          const { data: updatedData, error: updateError } = await supabase
+            .from('profiles')
+            .update({ isAdmin: true })
+            .eq('uid', uid)
+            .select()
+            .maybeSingle();
+          
+          if (!updateError && updatedData) {
+            setUserData(updatedData);
+            return;
+          }
+        }
         setUserData(data);
       }
     } catch (err) {
