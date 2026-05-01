@@ -75,7 +75,7 @@ export default function Dashboard() {
           )}
           <Link to="/wallet" className="btn-primary flex items-center gap-3 py-3.5 px-8 shadow-cyan-500/20 active:scale-95 transition-all group">
             <Zap size={20} className="group-hover:fill-white transition-all" /> 
-            <span className="text-xs font-black uppercase tracking-widest">Fund Node</span>
+            <span className="text-xs font-black uppercase tracking-widest">Recharge Node</span>
           </Link>
           <Link to="/wallet" className="btn-outline flex items-center gap-3 py-3.5 px-8 active:scale-95 transition-all text-xs font-black uppercase tracking-widest">
             Withdraw

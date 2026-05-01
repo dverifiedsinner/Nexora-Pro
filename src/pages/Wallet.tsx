@@ -19,12 +19,12 @@ import { supabase } from '../lib/supabase';
 
 export default function Wallet() {
   const { userData } = useAuth();
-  const [activeTab, setActiveTab] = React.useState<'fund' | 'withdraw' | 'conversion'>('fund');
+  const [activeTab, setActiveTab] = React.useState<'recharge' | 'withdraw' | 'conversion'>('recharge');
   const [conversionType, setConversionType] = React.useState<'airtime' | 'data'>('airtime');
   const [network, setNetwork] = React.useState<string>('MTN');
   
   // Form states
-  const [fundAmount, setFundAmount] = React.useState<string>('');
+  const [rechargeAmount, setRechargeAmount] = React.useState<string>('');
   const [withdrawAmount, setWithdrawAmount] = React.useState<string>('');
   const [withdrawWallet, setWithdrawWallet] = React.useState<string>('main');
   const [withdrawAccount, setWithdrawAccount] = React.useState<string>('');
@@ -35,38 +35,36 @@ export default function Wallet() {
   const [dataPackage, setDataPackage] = React.useState<{ price: number; label: string }>({ price: 350, label: '1GB' });
   const [isProcessing, setIsProcessing] = React.useState(false);
 
-  const handleFund = async () => {
-    const amount = Number(fundAmount);
-    if (!userData || isNaN(amount) || amount <= 0) return;
+  const handleRecharge = async () => {
+    const amount = Number(rechargeAmount);
+    if (!userData || isNaN(amount) || amount < 1000) {
+      alert('Minimum recharge is ₦1,000');
+      return;
+    }
     setIsProcessing(true);
     try {
-      const newBalances = {
-        ...userData.balances,
-        main: Number(userData.balances.main) + amount
-      };
       const newTransaction = {
-        type: 'funding',
-        title: 'NODE FUELING',
+        type: 'recharge',
+        title: 'NODE RECHARGE',
         amount: amount,
         time: new Date().toISOString(),
-        status: 'VERIFIED'
+        status: 'PENDING'
       };
 
       const { error } = await supabase
         .from('profiles')
         .update({
-          balances: newBalances,
           transactions: [...(userData.transactions || []), newTransaction]
         })
         .eq('uid', userData.uid);
 
       if (error) throw error;
 
-      setFundAmount('');
-      alert(`Wallet fueled successfully with ₦${amount.toLocaleString()}`);
+      setRechargeAmount('');
+      alert(`Recharge request for ₦${amount.toLocaleString()} submitted. Please transfer to the provided account and wait for verification.`);
     } catch (err) {
       console.error(err);
-      alert('Funding failed.');
+      alert('Recharge request failed.');
     } finally {
       setIsProcessing(false);
     }
@@ -188,7 +186,7 @@ export default function Wallet() {
         
         <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto z-10">
           {[
-            { id: 'fund', label: 'Fuel Node', icon: ArrowDownLeft },
+            { id: 'recharge', label: 'Recharge', icon: ArrowDownLeft },
             { id: 'withdraw', label: 'Cash Out', icon: ArrowUpRight },
             { id: 'conversion', label: 'Asset Swap', icon: Smartphone },
           ].map((tab) => (
@@ -268,32 +266,39 @@ export default function Wallet() {
           <div className="glass-card p-10 md:p-12 border-white/5 shadow-[0_30px_60px_rgba(0,0,0,0.4)] relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.01] to-transparent pointer-events-none"></div>
             
-            {activeTab === 'fund' && (
+            {activeTab === 'recharge' && (
               <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="max-w-md">
-                  <h3 className="text-3xl font-display font-black mb-3 italic uppercase tracking-tight">Fuel Node.</h3>
-                  <p className="text-sm text-white/30 font-light leading-relaxed">Deposit capital into your Nexora account to access high-yield assets and curriculum streams.</p>
+                  <h3 className="text-3xl font-display font-black mb-3 italic uppercase tracking-tight">Recharge Node.</h3>
+                  <p className="text-sm text-white/30 font-light leading-relaxed">Infuse capital into your Nexora account via manual transfer protocol. Once verified, your yields will activate.</p>
                 </div>
                 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <button className="flex flex-col items-center gap-8 p-10 bg-white/5 rounded-[2.5rem] border border-white/5 hover:border-cyan-500/40 hover:bg-white/[0.08] transition-all text-center group active:scale-95">
-                    <div className="w-20 h-20 rounded-[2rem] bg-cyan-500/10 flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-2xl shadow-cyan-500/10">
-                      <CreditCard size={32} className="text-cyan-400" />
+                <div className="grid md:grid-cols-1 gap-6">
+                  <div className="p-10 bg-white/5 rounded-[2.5rem] border border-cyan-500/20 shadow-2xl shadow-cyan-500/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8">
+                       <Building2 size={48} className="text-white/5 group-hover:text-cyan-500/10 transition-colors" />
                     </div>
-                    <div>
-                      <h4 className="font-black text-xs uppercase tracking-[0.2em] mb-2">Secure Gateway</h4>
-                      <p className="text-[10px] text-white/20 italic uppercase tracking-widest font-black">Instant Transfer Protocol</p>
+                    <div className="space-y-6 relative z-10">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 mb-4">Official Bank Node</p>
+                        <div className="space-y-4">
+                          {[
+                            { label: 'Bank Name', value: 'OPAY / MONIEPOINT' },
+                            { label: 'Account Number', value: '8106489377' },
+                            { label: 'Account Name', value: 'NEXORA SYSTEMS' },
+                          ].map(item => (
+                            <div key={item.label} className="flex justify-between items-center py-2 border-b border-white/5">
+                              <span className="text-[10px] text-white/20 font-bold uppercase">{item.label}</span>
+                              <span className="text-sm font-black text-white">{item.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
+                        <p className="text-[10px] text-cyan-400 font-bold uppercase text-center">Transfer strictly to this node only</p>
+                      </div>
                     </div>
-                  </button>
-                  <button className="flex flex-col items-center gap-8 p-10 bg-white/5 rounded-[2.5rem] border border-white/5 hover:border-cyan-500/40 hover:bg-white/[0.08] transition-all text-center group active:scale-95">
-                    <div className="w-20 h-20 rounded-[2rem] bg-pink-500/10 flex items-center justify-center group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 shadow-2xl shadow-pink-500/10">
-                      <Building2 size={32} className="text-pink-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-black text-xs uppercase tracking-[0.2em] mb-2">Direct Audit</h4>
-                      <p className="text-[10px] text-white/20 italic uppercase tracking-widest font-black">Manual Node Verification</p>
-                    </div>
-                  </button>
+                  </div>
                 </div>
 
                 <div className="space-y-8">
@@ -303,7 +308,7 @@ export default function Wallet() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     {[1000, 5000, 10000].map((amt) => (
-                      <button key={amt} onClick={() => setFundAmount(amt.toString())} className={`py-5 px-4 rounded-2xl font-display font-black transition-all text-sm shadow-xl active:scale-95 border ${fundAmount === amt.toString() ? 'bg-cyan-500 text-white border-white/20' : 'bg-white/5 border-white/5 hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:text-cyan-400'}`}>
+                      <button key={amt} onClick={() => setRechargeAmount(amt.toString())} className={`py-5 px-4 rounded-2xl font-display font-black transition-all text-sm shadow-xl active:scale-95 border ${rechargeAmount === amt.toString() ? 'bg-cyan-500 text-white border-white/20' : 'bg-white/5 border-white/5 hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:text-cyan-400'}`}>
                         ₦{amt.toLocaleString()}
                       </button>
                     ))}
@@ -312,18 +317,18 @@ export default function Wallet() {
                     <span className="absolute left-8 top-1/2 -translate-y-1/2 text-cyan-400 font-black text-xl group-focus-within:animate-pulse">₦</span>
                     <input 
                       type="number" 
-                      value={fundAmount}
-                      onChange={(e) => setFundAmount(e.target.value)}
+                      value={rechargeAmount}
+                      onChange={(e) => setRechargeAmount(e.target.value)}
                       placeholder="Custom Entry Amount" 
                       className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-7 pl-16 pr-8 focus:outline-none focus:border-cyan-500 transition-all text-4xl font-display font-black placeholder:text-white/10 placeholder:font-black placeholder:uppercase placeholder:text-xs placeholder:tracking-[0.5em] group-focus-within:bg-white/[0.08]"
                     />
                   </div>
                   <button 
-                    onClick={handleFund}
-                    disabled={isProcessing || !fundAmount}
+                    onClick={handleRecharge}
+                    disabled={isProcessing || !rechargeAmount}
                     className="w-full btn-primary py-6 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    {isProcessing ? 'Processing Transaction...' : 'Initiate Funding Chain'}
+                    {isProcessing ? 'Processing Transaction...' : 'Verify Transfer & Recharge'}
                   </button>
                 </div>
               </div>

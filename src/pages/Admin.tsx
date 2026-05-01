@@ -15,10 +15,11 @@ import {
 import { supabase } from '../lib/supabase';
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = React.useState<'users' | 'withdrawals' | 'courses' | 'system'>('users');
+  const [activeTab, setActiveTab] = React.useState<'users' | 'withdrawals' | 'recharges' | 'courses' | 'system'>('users');
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [users, setUsers] = React.useState<any[]>([]);
   const [withdrawals, setWithdrawals] = React.useState<any[]>([]);
+  const [recharges, setRecharges] = React.useState<any[]>([]);
   const [selectedUser, setSelectedUser] = React.useState<any | null>(null);
   const [isEditingUser, setIsEditingUser] = React.useState(false);
 
@@ -46,20 +47,27 @@ export default function Admin() {
         const { data: configData } = await supabase.from('settings').select('*').eq('id', 'system').single();
         if (configData) setSystemConfig(configData);
 
-        // Fetch Withdrawals
-        const { data: withdrawalsData } = await supabase.from('profiles').select('*');
-        if (withdrawalsData) {
+        // Fetch Withdrawals & Recharges
+        const { data: profileSyncData } = await supabase.from('profiles').select('*');
+        if (profileSyncData) {
           const allWithdrawals: any[] = [];
-          withdrawalsData.forEach(u => {
+          const allRecharges: any[] = [];
+          
+          profileSyncData.forEach(u => {
             if (u.transactions) {
               u.transactions.forEach((t: any) => {
+                const commonData = { ...t, userId: u.uid, userName: u.displayName, userEmail: u.email };
                 if (t.type === 'withdrawal' && t.status === 'SETTLED') {
-                   allWithdrawals.push({ ...t, userId: u.uid, userName: u.displayName, userEmail: u.email });
+                   allWithdrawals.push(commonData);
+                }
+                if (t.type === 'recharge' && t.status === 'PENDING') {
+                   allRecharges.push(commonData);
                 }
               });
             }
           });
           setWithdrawals(allWithdrawals);
+          setRecharges(allRecharges);
         }
 
         // Fetch Courses
@@ -169,6 +177,38 @@ export default function Admin() {
     }
   };
 
+  const approveRecharge = async (recharge: any) => {
+    try {
+      const user = users.find(u => u.uid === recharge.userId);
+      if (!user) return;
+
+      const updatedTransactions = user.transactions.map((t: any) => {
+        if (t.time === recharge.time && t.type === 'recharge') {
+          return { ...t, status: 'VERIFIED' };
+        }
+        return t;
+      });
+
+      const newBalances = {
+        ...user.balances,
+        main: (user.balances.main || 0) + recharge.amount
+      };
+
+      const { error } = await supabase.from('profiles').update({ 
+        transactions: updatedTransactions,
+        balances: newBalances
+      }).eq('uid', user.uid);
+      
+      if (error) throw error;
+      
+      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions, balances: newBalances } : u));
+      setRecharges(prev => prev.filter(r => r.time !== recharge.time));
+      alert('Node recharge verified and balance updated.');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-12">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-8">
@@ -179,6 +219,7 @@ export default function Admin() {
         <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto">
           {[
             { id: 'users', label: 'Network' },
+            { id: 'recharges', label: 'Inflow' },
             { id: 'withdrawals', label: 'Vaults' },
             { id: 'courses', label: 'Curriculum' },
             { id: 'system', label: 'System' },
@@ -405,6 +446,60 @@ export default function Admin() {
             </table>
           )}
 
+          {activeTab === 'recharges' && (
+            <div className="animate-in fade-in duration-500">
+              {recharges.length > 0 ? (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-white/[0.02] text-white/30 font-black text-[10px] uppercase tracking-[0.2em]">
+                      <th className="px-8 py-6">Operator</th>
+                      <th className="px-8 py-6 text-center">Amount</th>
+                      <th className="px-8 py-6 text-center">Timestamp</th>
+                      <th className="px-8 py-6 text-right">Verification</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02] text-xs">
+                    {recharges.map((r, i) => (
+                      <tr key={i} className="hover:bg-white/[0.01] transition-all">
+                        <td className="px-8 py-6">
+                          <p className="font-bold text-white">{r.userName}</p>
+                          <p className="text-[10px] text-white/30">{r.userEmail}</p>
+                        </td>
+                        <td className="px-8 py-6 text-center font-display font-black text-cyan-400">
+                          ₦{Number(r.amount).toLocaleString()}
+                        </td>
+                        <td className="px-8 py-6 text-center text-white/40">
+                          {new Date(r.time).toLocaleString()}
+                        </td>
+                        <td className="px-8 py-6">
+                          <div className="flex justify-end">
+                            <button 
+                              onClick={() => approveRecharge(r)}
+                              className="btn-primary py-2 px-4 text-[9px] font-black uppercase tracking-widest"
+                            >
+                              Verify & credit
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="py-24 text-center space-y-8">
+                  <div className="w-24 h-24 bg-white/5 rounded-[2.5rem] border border-white/5 flex items-center justify-center mx-auto shadow-2xl relative">
+                    <ArrowUpRight size={48} className="text-white/5" />
+                    <div className="absolute inset-0 bg-cyan-500/5 blur-3xl"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xl font-display font-bold tracking-tight text-white/80 italic">Clear Records.</p>
+                    <p className="text-xs text-white/20 uppercase font-black tracking-[0.3em] font-light">Zero pending inflow verifications detected.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'withdrawals' && (
             <div className="animate-in fade-in duration-500">
               {withdrawals.length > 0 ? (
@@ -458,6 +553,7 @@ export default function Admin() {
               )}
             </div>
           )}
+
         </div>
       </section>
 
