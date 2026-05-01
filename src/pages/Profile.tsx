@@ -8,12 +8,24 @@ export default function Profile() {
   const { userData } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    displayName: userData?.displayName || '',
-    phoneNumber: (userData as any)?.phoneNumber || '',
-    bankName: (userData as any)?.bankName || '',
-    accountNumber: (userData as any)?.accountNumber || '',
-    accountName: (userData as any)?.accountName || '',
+    displayName: '',
+    phoneNumber: '',
+    bankName: '',
+    accountNumber: '',
+    accountName: '',
   });
+
+  React.useEffect(() => {
+    if (userData) {
+      setFormData({
+        displayName: userData.displayName || '',
+        phoneNumber: (userData as any).phoneNumber || '',
+        bankName: (userData as any).bankName || '',
+        accountNumber: (userData as any).accountNumber || '',
+        accountName: (userData as any).accountName || '',
+      });
+    }
+  }, [userData]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

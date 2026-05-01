@@ -70,12 +70,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .select('*')
         .eq('uid', uid)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid 406 errors on missing rows
 
-      if (error && error.code === 'PGRST116') {
+      if (!data && !error) {
         // User doesn't exist, create profile
-        const session = await supabase.auth.getSession();
-        const user = session.data.session?.user;
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         
         if (user) {
           const referredBy = localStorage.getItem('referredBy');
@@ -93,17 +93,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
             referredBy: referredBy || null,
             isAdmin: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            transactions: [],
+            enrolledCourses: []
           };
 
           const { data: createdData, error: createError } = await supabase
             .from('profiles')
             .insert([newUser])
             .select()
-            .single();
+            .maybeSingle();
 
-          if (createError) throw createError;
-          setUserData(createdData);
+          if (createError) {
+            console.error('Profile creation error during fetch:', createError);
+          } else if (createdData) {
+            setUserData(createdData);
+          }
           localStorage.removeItem('referredBy');
         }
       } else if (data) {
@@ -125,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (email: string, password: string, username: string) => {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -141,38 +146,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       throw authError;
     }
-
-    if (authData.user) {
-      const referredBy = localStorage.getItem('referredBy');
-      const newUser: UserData = {
-        uid: authData.user.id,
-        email: authData.user.email ?? null,
-        displayName: username,
-        photoURL: null,
-        balances: {
-          main: 0,
-          bonus: 1000,
-          referral: 0,
-          investment: 0
-        },
-        referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-        referredBy: referredBy || null,
-        isAdmin: false,
-        createdAt: new Date().toISOString(),
-        transactions: [],
-        enrolledCourses: []
-      };
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([newUser]);
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        // Even if profile fails, user is signed up in auth
-      }
-      localStorage.removeItem('referredBy');
-    }
+    
+    // We don't manually insert the profile here anymore.
+    // fetchUserData handles it when onAuthStateChange fires.
+    // This avoids double-inserts and race conditions.
   };
 
   const signOut = async () => {

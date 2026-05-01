@@ -22,28 +22,28 @@ export default function Dashboard() {
   const balanceCards = [
     { 
       name: 'Main Wallet', 
-      amount: userData?.balances.main || 0, 
+      amount: userData?.balances?.main || 0, 
       icon: Wallet, 
       color: 'from-cyan-500 to-blue-600',
       desc: 'Top-ups & earnings'
     },
     { 
       name: 'Bonus Balance', 
-      amount: userData?.balances.bonus || 0, 
+      amount: userData?.balances?.bonus || 0, 
       icon: Zap, 
       color: 'from-indigo-500 to-blue-700',
       desc: 'Activation & registration'
     },
     { 
       name: 'Referral Rewards', 
-      amount: userData?.balances.referral || 0, 
+      amount: userData?.balances?.referral || 0, 
       icon: Users, 
       color: 'from-pink-500 to-rose-600',
       desc: 'Network earnings'
     },
     { 
       name: 'Course Earnings', 
-      amount: userData?.balances.investment || 0, 
+      amount: userData?.balances?.investment || 0, 
       icon: Award, 
       color: 'from-emerald-500 to-teal-600',
       desc: 'Learning income'
