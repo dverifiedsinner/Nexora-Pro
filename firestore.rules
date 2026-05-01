@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() { 
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- User Validation ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'balances', 'createdAt'])
+        && data.uid == request.auth.uid
+        && data.email is string
+        && data.balances.main is number && data.balances.main >= 0
+        && data.balances.bonus is number && data.balances.bonus >= 0
+        && data.balances.referral is number && data.balances.referral >= 0
+        && data.balances.investment is number && data.balances.investment >= 0
+        && data.createdAt == request.time;
+    }
+
+    // --- Rules ---
+
+    // Users
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && !incoming().get('isAdmin', false);
+      allow update: if isOwner(userId) 
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && (
+          // Action: Profile Update
+          (incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL'])) ||
+          // Action: Balance Update (In a real app this is backend-only, but here we permit specific keys for the demo)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['balances', 'referredBy', 'referralCode']))
+        )
+        && !incoming().get('isAdmin', false);
+    }
+
+    // Courses
+    match /courses/{courseId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Enrolments
+    match /enrolments/{enrolmentId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() 
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'active'
+        && exists(/databases/$(database)/documents/courses/$(incoming().courseId));
+      allow update: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Tasks
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Task Completions
+    match /taskCompletions/{completionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() 
+        && incoming().userId == request.auth.uid
+        && incoming().completedAt == request.time
+        && exists(/databases/$(database)/documents/tasks/$(incoming().taskId));
+    }
+
+    // Transactions
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() 
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().status == 'pending'; // Users can only create pending requests
+      allow update: if isAdmin();
+    }
+
+    // Withdrawals
+    match /withdrawals/{withdrawalId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() 
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time;
+      allow update: if isAdmin();
+    }
+    
+    // Admin list
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only manageable via console
+    }
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user on the platform with their balances and referring info.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "referredBy": { "type": "string" },
+        "balances": {
+          "type": "object",
+          "properties": {
+            "main": { "type": "number" },
+            "bonus": { "type": "number" },
+            "referral": { "type": "number" },
+            "investment": { "type": "number" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isAdmin": { "type": "boolean" }
+      },
+      "required": ["uid", "email", "balances", "createdAt"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "A learning course that users can purchase to earn rewards.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "totalReward": { "type": "number" },
+        "category": { "type": "string" },
+        "thumbnail": { "type": "string" }
+      },
+      "required": ["title", "price", "totalReward"]
+    },
+    "Enrolment": {
+      "title": "Enrolment",
+      "description": "Tracks a user's progress in a course.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "earned": { "type": "number" },
+        "enrolledAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "courseId", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A simple task for users to complete.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "reward": { "type": "number" },
+        "type": { "type": "string", "enum": ["daily", "one-time", "sponsored"] }
+      },
+      "required": ["title", "reward", "type"]
+    },
+    "TaskCompletion": {
+      "title": "TaskCompletion",
+      "description": "Record of a user completing a task.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "taskId": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "rewardEarned": { "type": "number" }
+      },
+      "required": ["userId", "taskId", "completedAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A log of any financial movement.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["funding", "withdrawal", "bonus", "referral", "task", "investment"] },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "description": { "type": "string" },
+        "walletType": { "type": "string", "enum": ["main", "bonus", "referral", "investment"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "type", "status", "walletType", "createdAt"]
+    },
+    "WithdrawalRequest": {
+      "title": "WithdrawalRequest",
+      "description": "A request by a user to withdraw funds.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "method": { "type": "string" },
+        "details": { "type": "object" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "method", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and balances."
+    },
+    "/courses/{courseId}": {
+      "schema": "Course",
+      "description": "Available courses."
+    },
+    "/enrolments/{enrolmentId}": {
+      "schema": "Enrolment",
+      "description": "User course enrolments."
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Available tasks."
+    },
+    "/taskCompletions/{completionId}": {
+      "schema": "TaskCompletion",
+      "description": "Log of completed tasks."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial transaction history."
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "WithdrawalRequest",
+      "description": "Withdrawal queue for admin approval."
+    }
+  }
+}

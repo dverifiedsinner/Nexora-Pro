@@ -1,0 +1,280 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { BookOpen, Award, Clock, Star, Zap, ChevronRight, Search, Filter, AlertCircle, Check, ArrowRight } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { doc, updateDoc, increment, arrayUnion, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import Quiz from '../components/Quiz';
+
+export default function Courses() {
+  const { userData } = useAuth();
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [isQuizzing, setIsQuizzing] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+
+  const courses = [
+    { 
+      id: 'c1', 
+      title: 'Digital Marketing Mastery', 
+      price: 2500, 
+      reward: 5000, 
+      category: 'Marketing', 
+      lessons: 12, 
+      duration: '4h 30m',
+      rating: 4.8,
+      members: 1240,
+      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400',
+      questions: [
+        { id: 1, text: "What is the primary goal of SEO?", options: ["Visibility", "Offline Sales", "Color Theory", "Server Speed"], correctAnswer: 0 },
+        { id: 2, text: "Which platform is best for B2B marketing?", options: ["TikTok", "LinkedIn", "Instagram", "Snapchat"], correctAnswer: 1 },
+        { id: 3, text: "What does CTR stand for?", options: ["Click Through Rate", "Cost To Run", "Client Trust Ratio", "Core Task Result"], correctAnswer: 0 },
+        { id: 4, text: "A high bounce rate usually indicates?", options: ["Success", "Good content", "Poor user experience", "High load speed"], correctAnswer: 2 },
+        { id: 5, text: "Which is a 'Social Proof' element?", options: ["Testimonials", "Product Price", "Logo Color", "Font size"], correctAnswer: 0 },
+      ]
+    },
+    { 
+      id: 'c2', 
+      title: 'Crypto Trading Alpha', 
+      price: 5000, 
+      reward: 12000, 
+      category: 'Finance', 
+      lessons: 18, 
+      duration: '6h 15m',
+      rating: 4.9,
+      members: 850,
+      image: 'https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&q=80&w=400',
+      questions: [
+        { id: 1, text: "What's an 'ATH'?", options: ["All Time High", "All Time Honor", "Asset Trade Hour", "Active Time Hold"], correctAnswer: 0 },
+        { id: 2, text: "Which wallet is most secure?", options: ["Exchange", "Hot Wallet", "Cold Wallet", "Web Extension"], correctAnswer: 2 },
+        { id: 3, text: "What is 'FOMO'?", options: ["Fear Of Missing Out", "Fast Open Market Order", "Fixed Only Margin Option", "Future Option Market Offer"], correctAnswer: 0 },
+        { id: 4, text: "Who founded Bitcoin?", options: ["Vitalik", "Satoshi", "Elon", "Zuck"], correctAnswer: 1 },
+        { id: 5, text: "Ethereum's consensus is?", options: ["PoW", "PoS", "PBFT", "DPoS"], correctAnswer: 1 },
+      ]
+    },
+    { 
+      id: 'c3', 
+      title: 'UI Design Lab', 
+      price: 3000, 
+      reward: 7000, 
+      category: 'Design', 
+      lessons: 10, 
+      duration: '3h 45m',
+      rating: 4.7,
+      members: 520,
+      image: 'https://images.unsplash.com/photo-1586717791821-3f44a563dc4c?auto=format&fit=crop&q=80&w=400',
+      questions: [
+        { id: 1, text: "What is white space?", options: ["Empty area", "White colored font", "Error space", "Header area"], correctAnswer: 0 },
+        { id: 2, text: "Which is a primary color?", options: ["Green", "Purple", "Blue", "Orange"], correctAnswer: 2 },
+        { id: 3, text: "What does UI stand for?", options: ["User Interface", "User Interaction", "Unit Internal", "Unique Idea"], correctAnswer: 0 },
+        { id: 4, text: "Contrast helps with?", options: ["Legibility", "Speed", "Price", "Coding"], correctAnswer: 0 },
+        { id: 5, text: "What is a 'Mockup'?", options: ["Final code", "Sketch", "Static design", "Idea"], correctAnswer: 2 },
+      ]
+    }
+  ];
+
+  const handleEnroll = async (course: any) => {
+    if (!userData) return;
+    if (userData.balances.main < course.price) {
+      alert("Insufficient funds in Main Wallet. Please fund your node.");
+      return;
+    }
+
+    setIsEnrolling(true);
+    try {
+      const userRef = doc(db, 'users', userData.uid);
+      
+      // Deduct balance
+      await updateDoc(userRef, {
+        "balances.main": increment(-course.price),
+        "enrolledCourses": arrayUnion(course.id)
+      });
+
+      // Handle Referral Commission (25%)
+      if (userData.referredBy) {
+        const referrerRef = doc(db, 'users', userData.referredBy);
+        const commission = course.price * 0.25;
+        await updateDoc(referrerRef, {
+          "balances.referral": increment(commission)
+        });
+      }
+
+      alert(`Successfully enrolled in ${course.title}!`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
+  const handleStartAudit = (course: any) => {
+    setSelectedCourse(course);
+    setIsQuizzing(true);
+  };
+
+  const handleQuizComplete = async (finalEarning: number) => {
+    if (!userData || !selectedCourse) return;
+
+    try {
+      const userRef = doc(db, 'users', userData.uid);
+      await updateDoc(userRef, {
+        "balances.investment": increment(finalEarning),
+      });
+      // Optionally remove from enrolled or mark as completed
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsQuizzing(false);
+      setSelectedCourse(null);
+    }
+  };
+
+  const isEnrolled = (courseId: string) => {
+    return (userData as any)?.enrolledCourses?.includes(courseId);
+  };
+
+  return (
+    <div className="space-y-8 pb-12">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-display font-black text-gradient uppercase tracking-tight italic">Knowledge Streams.</h1>
+          <p className="text-white/40 text-sm font-light italic">Audit high-tier curriculum to unlock investment yields.</p>
+        </div>
+        <div className="flex gap-4">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 transition-colors" size={18} />
+            <input 
+              type="text" 
+              placeholder="Filter nodes..." 
+              className="bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-12 pr-6 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all w-full md:w-64 text-[10px] font-black uppercase tracking-widest"
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* Course Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {[
+          { label: 'Active Nodes', value: (userData as any)?.enrolledCourses?.length || '0', icon: BookOpen, color: 'text-cyan-400' },
+          { label: 'Yield Gained', value: `₦${userData?.balances.investment.toLocaleString()}`, icon: Award, color: 'text-pink-400' },
+          { label: 'Bonus Reserve', value: `₦${userData?.balances.bonus.toLocaleString()}`, icon: Zap, color: 'text-blue-400' },
+          { label: 'Network Size', value: '1.2k+', icon: Star, color: 'text-amber-400' },
+        ].map((stat, i) => (
+          <div key={i} className="glass-card p-6 flex items-center gap-5 border-white/5 shadow-xl animate-float" style={{ animationDelay: `${i * 0.2}s` }}>
+            <div className={`w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 ${stat.color} shadow-2xl`}>
+              <stat.icon size={22} />
+            </div>
+            <div>
+              <p className="text-xl font-display font-black tracking-tight">{stat.value}</p>
+              <p className="text-[9px] uppercase font-black text-white/20 tracking-widest leading-none">{stat.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Course Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        {courses.map((course, i) => (
+          <motion.div 
+            key={course.id}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.1 }}
+            className="glass-card group flex flex-col border-white/5 hover:border-cyan-500/30 overflow-hidden relative"
+          >
+            <div className="aspect-video relative overflow-hidden">
+               <img 
+                 src={course.image} 
+                 alt={course.title} 
+                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 grayscale-[50%] group-hover:grayscale-0" 
+               />
+               <div className="absolute top-4 left-4 flex gap-2 z-10">
+                 <span className="px-4 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-cyan-400 border border-cyan-500/30">
+                    {course.category}
+                 </span>
+               </div>
+               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f1d] via-[#0a0f1d]/20 to-transparent"></div>
+            </div>
+            
+            <div className="p-8 flex-1 flex flex-col relative z-10">
+              <h3 className="text-2xl font-display font-black tracking-tighter uppercase italic leading-[1.1] mb-4 group-hover:text-cyan-400 transition-colors">
+                {course.title}
+              </h3>
+              
+              <div className="flex items-center gap-4 text-[9px] uppercase tracking-[0.2em] font-black text-white/20 mb-8">
+                <span className="flex items-center gap-1.5"><BookOpen size={12} className="text-cyan-400" /> {course.lessons} Audits</span>
+                <span className="flex items-center gap-1.5"><Clock size={12} className="text-cyan-400" /> {course.duration}</span>
+              </div>
+              
+              <div className="mt-auto pt-6 border-t border-white/5 space-y-6">
+                <div className="flex justify-between items-center px-1">
+                  <div>
+                    <p className="text-[9px] uppercase font-black text-white/20 tracking-widest mb-1 italic">Vesting Amount</p>
+                    <p className="text-2xl font-display font-black italic tracking-tighter">₦{course.price.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] uppercase font-black text-cyan-400 tracking-widest mb-1 italic">Max Potential</p>
+                    <p className="text-2xl font-display font-black text-cyan-400 italic tracking-tighter">₦{course.reward.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {isEnrolled(course.id) ? (
+                  <button 
+                    onClick={() => handleStartAudit(course)}
+                    className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-600 to-cyan-500"
+                  >
+                    Initiate Audit <ArrowRight size={18} />
+                  </button>
+                ) : (
+                  <button 
+                    disabled={isEnrolling}
+                    onClick={() => handleEnroll(course)}
+                    className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isEnrolling ? 'Configuring Node...' : 'Secure Access'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {isQuizzing && selectedCourse && (
+          <Quiz 
+            courseId={selectedCourse.id}
+            courseTitle={selectedCourse.title}
+            rewardGoal={selectedCourse.reward}
+            questions={selectedCourse.questions}
+            onComplete={handleQuizComplete}
+            onCancel={() => {
+              setIsQuizzing(false);
+              setSelectedCourse(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+      {/* Featured Section */}
+      <section className="glass-card p-1 bg-gradient-to-r from-cyan-600/10 via-blue-600/5 to-transparent border-white/5 overflow-hidden relative mt-12 shadow-2xl">
+        <div className="p-10 md:p-16 relative z-10 flex flex-col md:flex-row items-center gap-16">
+          <div className="flex-1 space-y-8">
+            <h2 className="text-4xl md:text-6xl font-display font-black leading-[0.9] tracking-tighter italic uppercase text-gradient">Elite <br /> Partner Program.</h2>
+            <p className="text-lg text-white/40 leading-relaxed max-w-md font-light italic">
+              Monetize your expertise. Apply to become a NEXORA content creator and earn lifelong commissions on every enrollment.
+            </p>
+            <button className="btn-outline flex items-center gap-3 group border-white/10 uppercase tracking-widest font-black text-xs py-4 px-10">
+              Apply to Teach <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+          <div className="flex-1 hidden md:block">
+            <div className="aspect-square w-full bg-white/5 rounded-full border border-white/5 flex items-center justify-center relative scale-90 translate-x-10">
+               <Award size={160} strokeWidth={0.5} className="text-white/10" />
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/10 blur-[100px]"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
