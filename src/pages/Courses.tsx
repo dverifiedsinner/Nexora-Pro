@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Award, Clock, Star, Zap, ChevronRight, Search, Filter, AlertCircle, Check, ArrowRight } from 'lucide-react';
+import { BookOpen, Award, Clock, Star, Zap, ChevronRight, Search, Filter, AlertCircle, Check, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Quiz from '../components/Quiz';
@@ -11,7 +11,35 @@ export default function Courses() {
   const [isQuizzing, setIsQuizzing] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
 
-  const courses = [
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const { data, error } = await supabase.from('courses').select('*');
+        if (data && data.length > 0) {
+          // Merge with default questions if needed
+          const merged = data.map((c: any) => ({
+            ...defaultCourses.find(dc => dc.id === c.id || dc.title === c.title),
+            ...c,
+            // Ensure reward is 3.5x if not set or just as safety
+            reward: c.reward || (c.price * 3.5)
+          }));
+          setCourses(merged);
+        } else {
+          setCourses(defaultCourses);
+        }
+      } catch (err) {
+        setCourses(defaultCourses);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  const defaultCourses = [
     { 
       id: 'c1', 
       title: 'Digital Marketing Mastery', 
@@ -74,6 +102,9 @@ export default function Courses() {
   const handleEnroll = async (course: any, walletType: 'main' | 'bonus' = 'main') => {
     if (!userData) return;
     
+    const confirmSecure = window.confirm("SECURE NOW?");
+    if (!confirmSecure) return;
+
     if ((userData.balances as any)[walletType] < course.price) {
       alert(`Insufficient funds in ${walletType} Wallet. Please fund your node.`);
       return;
@@ -135,7 +166,10 @@ export default function Courses() {
         }
       }
 
-      alert(`Successfully enrolled in ${course.title}!`);
+      // Automatically start the quiz after successful enrollment
+      setSelectedCourse(course);
+      setIsQuizzing(true);
+      
     } catch (err) {
       console.error(err);
       alert('Enrollment failed');
@@ -176,6 +210,14 @@ export default function Courses() {
   const isEnrolled = (courseId: string) => {
     return (userData as any)?.enrolledCourses?.includes(courseId);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 size={48} className="text-cyan-400 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">

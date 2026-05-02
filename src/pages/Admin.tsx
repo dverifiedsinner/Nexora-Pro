@@ -19,11 +19,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function Admin() {
   const { signOut } = useAuth();
-  const [activeTab, setActiveTab] = React.useState<'users' | 'withdrawals' | 'recharges' | 'courses' | 'system'>('users');
+  const [activeTab, setActiveTab] = React.useState<'users' | 'withdrawals' | 'recharges' | 'courses' | 'system' | 'tasks'>('users');
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [users, setUsers] = React.useState<any[]>([]);
   const [withdrawals, setWithdrawals] = React.useState<any[]>([]);
   const [recharges, setRecharges] = React.useState<any[]>([]);
+  const [tasks, setTasks] = React.useState<any[]>([]);
   const [selectedUser, setSelectedUser] = React.useState<any | null>(null);
   const [isEditingUser, setIsEditingUser] = React.useState(false);
 
@@ -74,10 +75,10 @@ export default function Admin() {
           setRecharges(allRecharges);
         }
 
-        // Fetch Courses
-        const { data: coursesData } = await supabase.from('courses').select('*');
-        if (coursesData && coursesData.length > 0) {
-          setCourseList(coursesData);
+        // Fetch Tasks
+        const { data: tasksData } = await supabase.from('tasks').select('*');
+        if (tasksData && tasksData.length > 0) {
+          setTasks(tasksData);
         }
       } catch (err) {
         console.error(err);
@@ -273,6 +274,72 @@ export default function Admin() {
     }
   };
 
+  const handleUpdateTask = async (id: string, updates: any) => {
+    try {
+      const { error } = await supabase.from('tasks').update(updates).eq('id', id);
+      if (error) throw error;
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const createTask = async () => {
+    const title = prompt("Task Title:");
+    if (!title) return;
+    const rewardStr = prompt("Reward (₦):", "100");
+    const reward = Number(rewardStr);
+    if (isNaN(reward)) return;
+
+    try {
+      const newTask = {
+        title,
+        reward,
+        desc: 'New task description',
+        type: 'daily',
+        category: 'Social',
+        link: '#',
+        createdAt: new Date().toISOString()
+      };
+      const { data, error } = await supabase.from('tasks').insert([newTask]).select().single();
+      if (error) throw error;
+      setTasks(prev => [...prev, data]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    if(!confirm("Erase this task node?")) return;
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) throw error;
+      setTasks(prev => prev.filter(t => t.id !== id));
+    } catch (err) { console.error(err); }
+  }
+
+  const stats = [
+    { label: 'Total Nodes', value: users.length.toLocaleString(), icon: Users, color: 'text-cyan-400' },
+    { 
+      label: 'Outbound Flow', 
+      value: `₦${users.reduce((acc, u) => acc + (u.transactions || []).filter((t: any) => t.type === 'withdrawal' && t.status === 'DISBURSED').reduce((sum: number, t: any) => sum + Math.abs(t.amount || 0), 0), 0).toLocaleString()}`, 
+      icon: CreditCard, 
+      color: 'text-pink-400' 
+    },
+    { 
+      label: 'Asset Sales', 
+      value: users.reduce((acc, u) => acc + (u.transactions || []).filter((t: any) => t.type === 'course_purchase').length, 0).toLocaleString(), 
+      icon: BookOpen, 
+      color: 'text-blue-400' 
+    },
+    { 
+      label: 'Proof Audits', 
+      value: users.reduce((acc, u) => acc + (u.transactions || []).filter((t: any) => t.type === 'recharge').length, 0).toLocaleString(), 
+      icon: CheckSquare, 
+      color: 'text-emerald-400' 
+    },
+  ];
+
   return (
     <div className="space-y-8 pb-12">
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8 relative overflow-hidden bg-white/[0.02] p-8 md:p-12 rounded-[2.5rem] border border-white/5 shadow-2xl">
@@ -305,6 +372,7 @@ export default function Admin() {
           { id: 'recharges', label: 'Inflow' },
           { id: 'withdrawals', label: 'Vaults' },
           { id: 'courses', label: 'Curriculum' },
+          { id: 'tasks', label: 'Tasks' },
           { id: 'system', label: 'System' },
         ].map((tab) => (
           <button 
@@ -327,12 +395,7 @@ export default function Admin() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          { label: 'Total Nodes', value: '1,240', icon: Users, color: 'text-cyan-400' },
-          { label: 'Outbound Flow', value: '₦145,000', icon: CreditCard, color: 'text-pink-400' },
-          { label: 'Asset Sales', value: '240', icon: BookOpen, color: 'text-blue-400' },
-          { label: 'Proof Audits', value: '4.2k', icon: CheckSquare, color: 'text-emerald-400' },
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <div key={i} className="glass-card p-8 border-white/5 group hover:border-cyan-500/30 transition-all cursor-default relative overflow-hidden">
              <div className="flex justify-between items-start mb-6 relative z-10">
                 <div className={`p-3 rounded-2xl bg-white/5 border border-white/5 group-hover:scale-110 transition-transform ${stat.color}`}>
@@ -359,14 +422,14 @@ export default function Admin() {
               className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-2.5 md:py-3 pl-12 pr-6 text-[10px] md:text-sm font-medium focus:outline-none focus:border-cyan-500/40 focus:bg-white/[0.08] transition-all"
             />
           </div>
-          {activeTab === 'courses' && (
+          {activeTab === 'courses' || activeTab === 'tasks' ? (
             <button 
-              onClick={createCourse}
+              onClick={activeTab === 'courses' ? createCourse : createTask}
               className="w-full md:w-auto btn-primary py-2.5 md:py-3 px-6 md:px-8 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 md:gap-3 shadow-cyan-500/20 active:scale-95 transition-all"
             >
-              <Plus size={16} className="md:w-[18px] md:h-[18px]" /> New Curriculum
+              <Plus size={16} className="md:w-[18px] md:h-[18px]" /> {activeTab === 'courses' ? 'New Curriculum' : 'New Task'}
             </button>
-          )}
+          ) : null}
         </div>
 
         <div className="overflow-x-auto">
@@ -523,6 +586,79 @@ export default function Admin() {
                         <button className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-cyan-400/40 hover:text-cyan-400 transition-all"><Settings size={14} /></button>
                         <button 
                           onClick={() => deleteCourse(course.id)}
+                          className="p-3 bg-pink-500/5 text-pink-500 rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {activeTab === 'tasks' && (
+            <table className="w-full text-left border-collapse animate-in fade-in duration-500">
+               <thead>
+                <tr className="bg-white/[0.02] text-white/30 font-black text-[10px] uppercase tracking-[0.2em]">
+                  <th className="px-8 py-6">Mission Identity</th>
+                  <th className="px-8 py-6 text-center">Reward</th>
+                  <th className="px-8 py-6 text-center">Category</th>
+                  <th className="px-8 py-6 text-right">Settings</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.02] text-xs">
+                {tasks.map((task) => (
+                  <tr key={task.id} className="hover:bg-white/[0.01] transition-all group">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center font-black text-pink-400 group-hover:bg-pink-500 group-hover:text-white transition-all overflow-hidden">
+                           <CheckSquare size={20} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-white/90 group-hover:text-white transition-colors capitalize">{task.title}</p>
+                          <p className="text-[10px] text-white/30 font-medium italic truncate max-w-xs">{task.desc}</p>
+                          <p className="text-[9px] text-cyan-400/60 font-black uppercase mt-1">{task.link}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                        <input 
+                          type="text" 
+                          value={`₦${Number(task.reward || 0).toLocaleString()}`}
+                          onChange={(e) => {
+                            const val = Number(e.target.value.replace(/[^0-9]/g, ''));
+                            handleUpdateTask(task.id, { reward: val });
+                          }}
+                          className="bg-transparent border-none text-sm font-black text-cyan-400 text-center focus:outline-none w-24"
+                        />
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                        <select 
+                          value={task.category}
+                          onChange={(e) => handleUpdateTask(task.id, { category: e.target.value })}
+                          className="bg-transparent border-none text-[10px] font-black uppercase text-white/40 focus:outline-none appearance-none"
+                        >
+                          <option value="Social">Social</option>
+                          <option value="Video">Video</option>
+                          <option value="Ad">Ad</option>
+                          <option value="Feedback">Feedback</option>
+                        </select>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="flex justify-end gap-3">
+                        <button 
+                          onClick={() => {
+                            const newDesc = prompt("New description:", task.desc);
+                            if(newDesc) handleUpdateTask(task.id, { desc: newDesc });
+                          }}
+                          className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-cyan-400/40 hover:text-cyan-400 transition-all"
+                        >
+                          <Settings size={14} />
+                        </button>
+                        <button 
+                          onClick={() => deleteTask(task.id)}
                           className="p-3 bg-pink-500/5 text-pink-500 rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all"
                         >
                           <Trash2 size={14} />

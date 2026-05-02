@@ -47,8 +47,8 @@ export default function Games() {
 
   const handleQuantumStake = async () => {
     const amount = Number(stakingAmount);
-    if (!userData || amount < 2000) {
-      alert("Minimum staking amount is ₦2,000");
+    if (!userData || amount <= 0) {
+      alert("Please enter a valid staking amount");
       return;
     }
 
@@ -111,8 +111,8 @@ export default function Games() {
 
   const handleStake = async () => {
     const amount = Number(stakeAmount);
-    if (!userData || selectedMatches.length === 0 || amount < 200) {
-      alert("Nexora Protocol: Minimum stake is ₦200.");
+    if (!userData || selectedMatches.length === 0 || amount <= 0) {
+      alert("Nexora Protocol: Please enter a valid stake amount.");
       return;
     }
     
@@ -163,8 +163,8 @@ export default function Games() {
 
   const toggleSpin = async () => {
     const amount = Number(spinStake);
-    if (!userData || amount < 200) {
-      alert("Nexora Protocol: Minimum stake is ₦200 for high-velocity spins.");
+    if (!userData || amount <= 0) {
+      alert("Nexora Protocol: Please enter a valid stake amount.");
       return;
     }
 

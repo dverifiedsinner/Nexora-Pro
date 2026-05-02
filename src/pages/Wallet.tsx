@@ -38,8 +38,8 @@ export default function Wallet() {
 
   const handleRecharge = async () => {
     const amount = Number(rechargeAmount);
-    if (!userData || isNaN(amount) || amount < 1000) {
-      alert('Minimum recharge is ₦1,000');
+    if (!userData || isNaN(amount) || amount <= 0) {
+      alert('Invalid recharge amount');
       return;
     }
     
@@ -92,8 +92,8 @@ export default function Wallet() {
 
   const handleWithdraw = async () => {
     const amount = Number(withdrawAmount);
-    if (!userData || isNaN(amount) || amount < 2000) {
-      alert("Minimum withdrawal is ₦2,000.");
+    if (!userData || isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid withdrawal amount.");
       return;
     }
     
@@ -303,9 +303,9 @@ export default function Wallet() {
                         <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 mb-2 md:mb-4">Official Bank Node</p>
                         <div className="space-y-3 md:space-y-4">
                           {[
-                            { label: 'Bank', value: 'OPAY / MONIEPOINT' },
-                            { label: 'Acc No.', value: '8106489377' },
-                            { label: 'Name', value: 'NEXORA SYSTEMS' },
+                            { label: 'Bank', value: 'PALMPAY' },
+                            { label: 'Acc No.', value: '6680458614' },
+                            { label: 'Name', value: 'NEXORA SYSTEM' },
                           ].map(item => (
                             <div key={item.label} className="flex justify-between items-center py-1.5 md:py-2 border-b border-white/5">
                               <span className="text-[8px] md:text-[10px] text-white/20 font-bold uppercase">{item.label}</span>

@@ -14,7 +14,25 @@ export default function Tasks() {
     { title: 'Sponsored', icon: Share2, count: '4', color: 'text-emerald-400' },
   ];
 
-  const tasks = [
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const { data, error } = await supabase.from('tasks').select('*');
+        if (data && data.length > 0) setTasks(data);
+        else setTasks(defaultTasks);
+      } catch (err) {
+        setTasks(defaultTasks);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTasks();
+  }, []);
+
+  const defaultTasks = [
     {
       id: 't1',
       title: 'Watch Nexora Intro Video',
@@ -133,9 +151,29 @@ export default function Tasks() {
     }
   };
 
+  const getIcon = (iconName: string | any) => {
+    if (typeof iconName !== 'string') return iconName || CheckSquare;
+    switch (iconName) {
+      case 'Youtube': return Youtube;
+      case 'Share2': return Share2;
+      case 'Eye': return Eye;
+      case 'Award': return Award;
+      case 'Smartphone': return Smartphone;
+      default: return CheckSquare;
+    }
+  };
+
   const isCompleted = (taskId: string) => {
     return userData?.completedTasks?.includes(taskId);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 size={48} className="text-cyan-400 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -185,7 +223,10 @@ export default function Tasks() {
                 {isCompleted(task.id) ? (
                   <CheckCircle2 size={32} className="text-emerald-400" />
                 ) : (
-                  <task.icon size={32} className="text-cyan-400 group-hover:text-cyan-300" />
+                  React.createElement(getIcon(task.icon || task.iconPath), { 
+                    size: 32, 
+                    className: "text-cyan-400 group-hover:text-cyan-300" 
+                  })
                 )}
               </div>
               <div className="flex-1 space-y-2 relative z-10">

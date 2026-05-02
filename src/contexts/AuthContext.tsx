@@ -149,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             photoURL: currentUser.user_metadata?.avatar_url || null,
             balances: {
               main: 0,
-              bonus: 1000,
+              bonus: 500,
               referral: 0,
               investment: 0
             },

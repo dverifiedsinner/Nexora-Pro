@@ -27,7 +27,7 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
   const [isRevealingResult, setIsRevealingResult] = useState(false);
 
   const earningsPerQuestion = rewardGoal / questions.length;
-  const penaltyPerWrong = earningsPerQuestion * 0.5; // Wrong answer reduces earnings by half of what a right one adds
+  const penaltyPerWrong = 0; // Removed penalty to ensure 3.5x ROI as requested
 
   const handleNextStep = () => {
     if (currentStep === 'intro') setCurrentStep('learning');
@@ -54,6 +54,8 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
     } else {
       setCurrentStep('result');
       setIsRevealingResult(true);
+      // Ensure full 3.5x reward is granted on completion
+      setCurrentEarnings(rewardGoal);
     }
   };
 
