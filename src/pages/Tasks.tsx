@@ -18,18 +18,31 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
 
   React.useEffect(() => {
+    let mounted = true;
     const loadTasks = async () => {
       try {
+        console.log("Tasks: Fetching network missions...");
         const { data, error } = await supabase.from('tasks').select('*');
-        if (data && data.length > 0) setTasks(data);
-        else setTasks(defaultTasks);
+        
+        if (!mounted) return;
+
+        if (error) {
+          console.error("Tasks: Supabase connection failed:", error);
+          setTasks(defaultTasks);
+        } else if (data && data.length > 0) {
+          setTasks(data);
+        } else {
+          setTasks(defaultTasks);
+        }
       } catch (err) {
-        setTasks(defaultTasks);
+        console.error("Tasks: Critical network error:", err);
+        if (mounted) setTasks(defaultTasks);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
     loadTasks();
+    return () => { mounted = false; };
   }, []);
 
   const defaultTasks = [

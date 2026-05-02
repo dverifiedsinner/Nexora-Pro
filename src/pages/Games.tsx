@@ -46,8 +46,10 @@ export default function Games() {
   const [isProcessingStaking, setIsProcessingStaking] = useState(false);
 
   const handleQuantumStake = async () => {
-    const amount = Number(stakingAmount);
+    const sanitizedAmount = stakingAmount.replace(/[^0-9.]/g, '');
+    const amount = Number(sanitizedAmount);
     if (!userData || isNaN(amount)) {
+      alert("Invalid stake amount.");
       return;
     }
 
@@ -109,7 +111,9 @@ export default function Games() {
   };
 
   const handleStake = async () => {
-    const amount = Number(stakeAmount);
+    const sanitizedAmount = stakeAmount.replace(/[^0-9.]/g, '');
+    const amount = Number(sanitizedAmount);
+    
     if (!userData) {
       alert("Authentication node missing.");
       return;
@@ -172,8 +176,11 @@ export default function Games() {
   };
 
   const toggleSpin = async () => {
-    const amount = Number(spinStake);
+    const sanitizedAmount = spinStake.replace(/[^0-9.]/g, '');
+    const amount = Number(sanitizedAmount);
+    
     if (!userData || isNaN(amount)) {
+      alert("Invalid spin stake.");
       return;
     }
 
@@ -418,7 +425,7 @@ export default function Games() {
                              </div>
                              <div className="text-right">
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Potential 5X Yield</p>
-                                <p className="text-2xl font-display font-black text-cyan-400 tracking-tighter italic">₦{potentialWin.toLocaleString()}</p>
+                                <p className="text-2xl font-display font-black text-cyan-400 tracking-tighter italic">₦{(potentialWin || 0).toLocaleString()}</p>
                              </div>
                           </div>
                           
@@ -490,7 +497,7 @@ export default function Games() {
                        <div className="space-y-2">
                           <p className="text-white/40 font-light italic leading-relaxed">
                             {winResult ? 
-                              `Simulation complete. Asset yield of ₦${potentialWin.toLocaleString()} credited to your Bonus Wallet.` : 
+                              `Simulation complete. Asset yield of ₦${(potentialWin || 0).toLocaleString()} credited to your Bonus Wallet.` : 
                               'Simulation concluded with architectural zero. Better luck in the next stadium meta cycle.'
                             }
                           </p>
@@ -666,7 +673,7 @@ export default function Games() {
                       <div key={idx} className="p-5 bg-white/5 rounded-2xl border border-white/5 flex justify-between items-center group/item hover:bg-white/10 transition-all">
                         <div>
                           <p className="text-[9px] font-black text-cyan-400 uppercase tracking-widest mb-1 italic">Locked Reservoir</p>
-                          <p className="text-xl font-display font-black">₦{stake.amount.toLocaleString()}</p>
+                          <p className="text-xl font-display font-black">₦{(stake.amount || 0).toLocaleString()}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Time Remaining</p>

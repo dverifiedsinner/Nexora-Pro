@@ -936,7 +936,7 @@ export default function Admin() {
                           <p className="text-[10px] text-white/30">{r.userEmail}</p>
                         </td>
                         <td className="px-8 py-6 text-center font-display font-black text-cyan-400">
-                          ₦{Number(r.amount).toLocaleString()}
+                          ₦{Number(r.amount || 0).toLocaleString()}
                         </td>
                         <td className="px-8 py-6 text-center text-white/40">
                           {new Date(r.time).toLocaleString()}
@@ -1007,7 +1007,7 @@ export default function Admin() {
                           <p className="text-[10px] text-white/30">{w.userEmail}</p>
                         </td>
                         <td className="px-8 py-6 text-center font-display font-black text-pink-400">
-                          ₦{Math.abs(w.amount).toLocaleString()}
+                          ₦{Math.abs(w.amount || 0).toLocaleString()}
                         </td>
                         <td className="px-8 py-6 text-center text-white/40">
                           {new Date(w.time).toLocaleString()}

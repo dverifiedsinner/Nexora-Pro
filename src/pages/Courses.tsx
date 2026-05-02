@@ -16,16 +16,26 @@ export default function Courses() {
   const [loading, setLoading] = useState(true);
 
   React.useEffect(() => {
+    let mounted = true;
     const fetchCourses = async () => {
       try {
+        console.log("Courses: Fetching node curriculum...");
         const { data, error } = await supabase.from('courses').select('*');
-        if (data && data.length > 0) {
+        
+        if (!mounted) return;
+
+        if (error) {
+          console.error("Courses: Supabase error, falling back to local nodes:", error);
+          setCourses(defaultCourses);
+        } else if (data && data.length > 0) {
           const merged = data.map((c: any) => {
             const defaultCourse = defaultCourses.find(dc => dc.title === c.title);
+            const coursePrice = Number(c.price || (defaultCourse?.price || 0));
             return {
               ...defaultCourse,
               ...c,
-              reward: c.reward || (c.price * 3.5)
+              price: coursePrice,
+              reward: Number(c.reward || (coursePrice * 3.5))
             };
           });
           setCourses(merged);
@@ -33,12 +43,14 @@ export default function Courses() {
           setCourses(defaultCourses);
         }
       } catch (err) {
-        setCourses(defaultCourses);
+        console.error("Courses: Fetch critical error:", err);
+        if (mounted) setCourses(defaultCourses);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
     fetchCourses();
+    return () => { mounted = false; };
   }, []);
 
   const defaultCourses = [
@@ -251,8 +263,8 @@ export default function Courses() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {[
           { label: 'Active Nodes', value: (userData as any)?.enrolledCourses?.length || '0', icon: BookOpen, color: 'text-cyan-400' },
-          { label: 'Yield Gained', value: `₦${userData?.balances.investment.toLocaleString()}`, icon: Award, color: 'text-pink-400' },
-          { label: 'Bonus Reserve', value: `₦${userData?.balances.bonus.toLocaleString()}`, icon: Zap, color: 'text-blue-400' },
+          { label: 'Yield Gained', value: `₦${(userData?.balances?.investment || 0).toLocaleString()}`, icon: Award, color: 'text-pink-400' },
+          { label: 'Bonus Reserve', value: `₦${(userData?.balances?.bonus || 0).toLocaleString()}`, icon: Zap, color: 'text-blue-400' },
           { label: 'Network Size', value: '1.2k+', icon: Star, color: 'text-amber-400' },
         ].map((stat, i) => (
           <div key={i} className="glass-card p-6 flex items-center gap-5 border-white/5 shadow-xl animate-float" style={{ animationDelay: `${i * 0.2}s` }}>

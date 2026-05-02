@@ -27,7 +27,7 @@ export const generateCourseContent = async (courseTitle: string): Promise<Genera
     const ai = getAI();
     
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-flash", // Using 1.5-flash for broader stability as 3-flash-preview might be region-locked or unstable in current env
       contents: `Generate a comprehensive educational article and a 5-question quiz for a course titled: "${courseTitle}". The article should be high-quality, engaging, and at least 600 words long. The quiz must have 4 options per question and one correct answer index (0-3).`,
       config: {
         responseMimeType: "application/json",

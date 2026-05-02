@@ -37,14 +37,17 @@ export default function Wallet() {
   const [proofImage, setProofImage] = React.useState<string | null>(null);
 
   const handleRecharge = async () => {
-    const amount = Number(rechargeAmount);
+    // Sanitize input: remove commas and other non-numeric characters except decimals
+    const sanitizedAmount = rechargeAmount.replace(/[^0-9.]/g, '');
+    const amount = Number(sanitizedAmount);
+    
     if (!userData) {
       alert("Authentication node missing. Please re-synchronize.");
       return;
     }
 
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid amount for recharge.");
+      alert("Please enter a valid amount for recharge. Remove any symbols like ₦.");
       return;
     }
     
@@ -97,7 +100,9 @@ export default function Wallet() {
   };
 
   const handleWithdraw = async () => {
-    const amount = Number(withdrawAmount);
+    const sanitizedAmount = withdrawAmount.replace(/[^0-9.]/g, '');
+    const amount = Number(sanitizedAmount);
+    
     if (!userData || isNaN(amount) || amount <= 0) {
       alert("Please enter a valid withdrawal amount.");
       return;
@@ -149,8 +154,10 @@ export default function Wallet() {
       return;
     }
     
-    const finalAmount = conversionType === 'airtime' ? Number(convertValue) : dataPackage.price;
+    const sanitizedValue = convertValue.replace(/[^0-9.]/g, '');
+    const finalAmount = conversionType === 'airtime' ? Number(sanitizedValue) : dataPackage.price;
     if (isNaN(finalAmount)) {
+      alert("Invalid conversion amount.");
       return;
     }
 
@@ -249,7 +256,7 @@ export default function Wallet() {
            <div className="relative z-10 pt-6 md:pt-8">
               <p className="text-[8px] md:text-[10px] text-white/30 mb-1 md:mb-2 uppercase font-black tracking-[0.2em] italic">Main Liquid Assets</p>
               <h2 className="text-4xl md:text-6xl font-display font-black text-white tracking-tighter leading-none group-hover:text-cyan-400 transition-colors">
-                ₦{userData?.balances.main.toLocaleString()}
+                ₦{(userData?.balances?.main || 0).toLocaleString()}
               </h2>
               <div className="flex items-center gap-4 mt-4 md:mt-6">
                 <div className="px-3 py-1.5 md:px-4 md:py-2 bg-white/5 border border-white/5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
@@ -341,7 +348,7 @@ export default function Wallet() {
                   <div className="relative group">
                     <span className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-cyan-400 font-black text-lg md:text-xl group-focus-within:animate-pulse">₦</span>
                     <input 
-                      type="number" 
+                      type="text" 
                       value={rechargeAmount}
                       onChange={(e) => setRechargeAmount(e.target.value)}
                       placeholder="Custom Entry Amount" 
@@ -410,7 +417,7 @@ export default function Wallet() {
                       <ArrowUpRight size={16} className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
                     </div>
                     <div className="px-4 py-2 bg-white/5 rounded-lg border border-white/5">
-                      <p className="text-[10px] text-white/40 font-black">Available: <span className="text-white">₦{(userData?.balances as any)[withdrawWallet].toLocaleString()}</span></p>
+                      <p className="text-[10px] text-white/40 font-black">Available: <span className="text-white">₦{((userData?.balances as any)?.[withdrawWallet] || 0).toLocaleString()}</span></p>
                     </div>
                   </div>
 
@@ -419,7 +426,7 @@ export default function Wallet() {
                     <div className="relative group">
                       <span className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-pink-400 font-black text-lg md:text-xl">₦</span>
                       <input 
-                         type="number" 
+                         type="text" 
                         value={withdrawAmount}
                         onChange={(e) => setWithdrawAmount(e.target.value)}
                         placeholder="ENTER AMOUNT" 
@@ -538,7 +545,7 @@ export default function Wallet() {
                       <div className="relative group">
                          <span className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 text-cyan-400 font-display font-black text-lg md:text-xl">₦</span>
                          <input 
-                           type="number" 
+                           type="text" 
                            value={convertValue}
                            onChange={(e) => setConvertValue(e.target.value)}
                            placeholder="Enter Value" 
