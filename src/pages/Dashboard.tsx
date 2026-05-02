@@ -12,7 +12,8 @@ import {
   Clock,
   Star,
   BookOpen,
-  LogOut
+  LogOut,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -89,67 +90,131 @@ export default function Dashboard() {
         <div className="absolute -top-10 -right-20 w-80 h-80 bg-cyan-500/5 blur-[120px] rounded-full animate-float-slow pointer-events-none"></div>
       </header>
 
-      {/* Feature Banner */}
-      <section className="relative overflow-hidden glass-card p-0.5 md:p-1 rounded-[1.5rem] md:rounded-[2.5rem] border-white/5 shadow-2xl">
-        <div className="bg-gradient-to-br from-cyan-600/20 via-blue-900/40 to-black rounded-[1.4rem] md:rounded-[2.4rem] p-6 sm:p-10 md:p-16 flex flex-col md:flex-row items-center gap-8 md:gap-12 relative overflow-hidden">
-          <div className="flex-1 space-y-4 md:space-y-6 relative z-10 text-center md:text-left items-center md:items-start flex flex-col">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-cyan-300 border border-white/5">
-              <Star size={10} className="fill-cyan-300" /> Featured Asset
-            </div>
-            <h3 className="text-3xl sm:text-4xl md:text-6xl font-display font-black leading-[0.9] tracking-tighter uppercase italic">
-              Quantum <br /> <span className="text-cyan-400">Yield</span> Pro.
-            </h3>
-            <p className="text-white/50 text-xs md:text-base font-light italic max-w-sm">
-              Stake your bonus wallet and earn up to 5X rewards on exclusive early-access courses.
-            </p>
-            <Link to="/courses" className="btn-primary inline-flex py-3 px-8 md:py-4 md:px-10 text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20">
-              Upgrade Now
-            </Link>
-          </div>
-          <div className="flex-1 relative group perspective-1000">
-            <div className="relative z-10 transform rotate-y-12 group-hover:rotate-y-0 transition-transform duration-700">
-              <img 
-                src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80&w=600" 
-                alt="Feature" 
-                className="rounded-3xl shadow-2xl border border-white/10 opacity-80 group-hover:opacity-100 transition-opacity animate-float"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-3xl"></div>
-            </div>
-            {/* Floating UI */}
-            <div className="absolute -top-6 -right-6 glass p-4 rounded-2xl border-white/10 shadow-2xl animate-float-slow z-20 hidden md:block">
-              <TrendingUp size={32} className="text-cyan-400 opacity-60" />
-            </div>
-            <div className="absolute -bottom-6 -left-6 glass p-4 rounded-2xl border-white/10 shadow-2xl animate-float z-20 hidden md:block" style={{ animationDelay: '1s' }}>
-              <Award size={32} className="text-pink-400 opacity-60" />
-            </div>
-          </div>
-          
-          {/* Animated Background */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent opacity-50"></div>
-          <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-cyan-500/10 blur-[100px] rounded-full animate-pulse-glow"></div>
+      {/* Quick Action Icons (3D Style) */}
+      <section className="px-2 lg:px-0">
+        <div className="flex items-center justify-between mb-8">
+           <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Primary Utilities</h3>
+           <div className="h-px flex-1 bg-white/5 ml-8"></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            { label: 'Recharge', emoji: '⚡', color: 'from-cyan-500 to-blue-600', link: '/wallet' },
+            { label: 'Courses', emoji: '📚', color: 'from-indigo-500 to-purple-600', link: '/courses' },
+            { label: 'Referrals', emoji: '👥', color: 'from-rose-500 to-pink-600', link: '/referrals' },
+            { label: 'Play & Win', emoji: '🎮', color: 'from-amber-400 to-orange-600', link: '/games' }
+          ].map((action, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              whileHover={{ scale: 1.05, rotateY: 10, rotateX: -5 }}
+              className="relative group cursor-pointer"
+            >
+              <Link to={action.link}>
+                <div className="relative glass-card p-6 md:p-8 flex flex-col items-center justify-center text-center gap-4 overflow-hidden group">
+                  {/* Background Gradient Glow */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+                  
+                  <motion.div 
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, delay: i * 0.5 }}
+                    className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br ${action.color} shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex items-center justify-center text-4xl shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] relative z-10`}
+                  >
+                    {action.emoji}
+                  </motion.div>
+                  
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white group-hover:text-cyan-400 transition-colors relative z-10">{action.label}</span>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
         </div>
       </section>
 
-      {/* Balance Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 perspective-1000 px-2 lg:px-0">
+      {/* Featured Courses Carousel (Full-Bleed style) */}
+      <section className="-mx-6 md:-mx-12 overflow-hidden transition-colors duration-1000 bg-gradient-to-r from-cyan-900/10 via-black to-pink-900/10 py-12">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 space-y-10">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="text-3xl md:text-5xl font-display font-black tracking-tighter uppercase italic">Hot Nodes.</h3>
+              <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.3em]">Top Tier Earning Modules</p>
+            </div>
+            <Link to="/courses" className="h-14 w-14 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-cyan-400 hover:border-cyan-400 transition-all group">
+              <ArrowUpRight size={24} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+            </Link>
+          </div>
+          
+          <div className="flex gap-8 overflow-x-auto pb-12 scrollbar-hide snap-x">
+            {[
+              { title: 'Digital Marketing mastery', reward: '₦45,000', icon: TrendingUp, color: 'from-cyan-600 to-blue-900', rating: 4.9, earnings: '5×' },
+              { title: 'Crypto Trading Alpha', reward: '₦120,500', icon: Zap, color: 'from-purple-600 to-indigo-900', rating: 5.0, earnings: '5×' },
+              { title: 'Cyber Security Protocol', reward: '₦88,000', icon: Shield, color: 'from-emerald-600 to-teal-900', rating: 4.8, earnings: '5×' },
+              { title: 'Neural Ad-Scaling', reward: '₦32,000', icon: Zap, color: 'from-pink-600 to-rose-900', rating: 4.7, earnings: '5×' },
+            ].map((course, i) => (
+              <motion.div 
+                key={i} 
+                whileHover={{ scale: 1.02 }}
+                className="min-w-[320px] md:min-w-[450px] snap-center relative overflow-hidden rounded-[2.5rem] border border-white/10 group cursor-pointer aspect-[16/10]"
+              >
+                {/* Immersive Background */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${course.color} transition-all duration-700 group-hover:scale-110`} />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                
+                {/* Content */}
+                <div className="relative h-full p-10 flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10">
+                      <Star size={10} className="fill-amber-400 text-amber-400" />
+                      <span className="text-[10px] font-black text-white">{course.rating}</span>
+                    </div>
+                    <div className="px-3 py-1 bg-cyan-500 rounded-full text-[9px] font-black tracking-widest text-white shadow-lg shadow-cyan-500/30">
+                      {course.earnings} EARN
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h4 className="text-3xl md:text-4xl font-display font-black leading-none tracking-tighter text-white group-hover:translate-x-2 transition-transform duration-500">{course.title}</h4>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-[9px] uppercase font-black text-white/40 tracking-[0.2em] mb-1">Projected Reward</p>
+                        <p className="text-2xl md:text-3xl font-display font-black text-cyan-300">{course.reward}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all">
+                        <ChevronRight size={24} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Shimmer line */}
+                <motion.div 
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
+                />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Balance Grid (Moved below featured section for better flow) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-2 lg:px-0">
         {balanceCards.map((card, i) => (
           <motion.div 
             key={card.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={`glass-card p-4 md:p-6 flex flex-col justify-between group rotate-3d animate-float shadow-xl md:shadow-2xl hover:shadow-cyan-500/10 cursor-default bg-gradient-to-br from-white/[0.03] to-transparent border-white/5`}
-            style={{ animationDelay: `${i * 0.5}s` }}
+            whileHover={{ y: -5 }}
+            className={`glass-card p-6 flex flex-col justify-between group h-48 border-white/5 hover:border-cyan-500/30 transition-all bg-gradient-to-br from-white/[0.02] to-transparent`}
           >
-            <div className="flex justify-between items-start mb-3 md:mb-4">
-              <div className={`p-2 md:p-3 rounded-lg md:rounded-2xl bg-gradient-to-br ${card.color} shadow-lg shadow-cyan-500/20 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                <card.icon size={16} className="text-white md:w-5 md:h-5" />
+            <div className="flex justify-between items-start">
+              <div className={`p-3 rounded-2xl bg-gradient-to-br ${card.color} shadow-xl group-hover:rotate-12 transition-transform`}>
+                <card.icon size={20} className="text-white" />
               </div>
-              <span className="text-[7px] md:text-[9px] uppercase tracking-[0.1em] md:tracking-[0.2em] text-white/30 font-black bg-white/5 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-white/5">{card.name}</span>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-[8px] md:text-[10px] text-white/30 mb-1 font-black uppercase tracking-widest leading-none truncate">{card.desc}</p>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black tracking-tighter group-hover:text-cyan-400 transition-colors">
+            <div>
+              <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em] mb-1">{card.name}</p>
+              <h2 className="text-2xl md:text-3xl font-display font-black tracking-tighter group-hover:text-cyan-400 transition-colors">
                 ₦{card.amount.toLocaleString()}
               </h2>
             </div>

@@ -239,56 +239,95 @@ export default function Wallet() {
       </header>
 
       {/* Main Wallets Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 perspective-1000">
-        <div className="glass-card p-6 md:p-10 bg-gradient-to-br from-cyan-600/20 via-blue-900/40 to-black border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[220px] md:min-h-[280px] shadow-2xl rotate-3d animate-float group hover:border-cyan-500/30 transition-all duration-700">
-           <div className="relative z-10 flex justify-between items-start">
-              <div className="p-3 md:p-4 bg-white/10 rounded-xl md:rounded-2xl border border-white/10 shadow-xl group-hover:rotate-12 transition-transform duration-500">
-                 <WalletIcon size={24} className="text-cyan-400 md:w-7 md:h-7" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 perspective-2000">
+        <motion.div 
+          whileHover={{ rotateX: 5, rotateY: -5, scale: 1.02 }}
+          className="relative group h-[300px] md:h-[350px]"
+        >
+          {/* Glowing Aura */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-[2.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
+          
+          <div className="relative h-full glass-card p-8 md:p-12 bg-gradient-to-br from-[#0c4a6e] via-[#082f49] to-black border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            {/* Parallax Shimmer */}
+            <motion.div 
+              animate={{ x: ['-100%', '100%'], opacity: [0, 0.1, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent -skew-x-12 pointer-events-none"
+            />
+            
+            {/* Animated Orbs */}
+            <motion.div 
+              animate={{ y: [0, -30, 0], x: [0, 20, 0] }}
+              transition={{ duration: 8, repeat: Infinity }}
+              className="absolute -top-10 -right-10 w-48 h-48 bg-cyan-500/10 blur-[80px] rounded-full"
+            />
+            
+            <div className="relative z-10 flex justify-between items-start">
+              <div className="p-4 bg-white/5 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-inner group-hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all">
+                <WalletIcon size={32} className="text-cyan-400" />
               </div>
               <div className="text-right">
-                <p className="text-[8px] md:text-[9px] uppercase font-black tracking-[0.3em] text-cyan-400 mb-1">Vault Authority</p>
-                <div className="flex items-center gap-2 justify-end">
-                   <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-500 rounded-full animate-ping"></div>
-                   <span className="text-[8px] md:text-[10px] font-black text-white/40 tracking-widest uppercase">Secured</span>
+                <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-full border border-white/5">
+                  <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
+                  <span className="text-[10px] font-black text-cyan-400 tracking-[0.2em] uppercase">Auth node active</span>
                 </div>
               </div>
-           </div>
-           <div className="relative z-10 pt-6 md:pt-8">
-              <p className="text-[8px] md:text-[10px] text-white/30 mb-1 md:mb-2 uppercase font-black tracking-[0.2em] italic">Main Liquid Assets</p>
-              <h2 className="text-4xl md:text-6xl font-display font-black text-white tracking-tighter leading-none group-hover:text-cyan-400 transition-colors">
-                ₦{(userData?.balances?.main || 0).toLocaleString()}
-              </h2>
-              <div className="flex items-center gap-4 mt-4 md:mt-6">
-                <div className="px-3 py-1.5 md:px-4 md:py-2 bg-white/5 border border-white/5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
-                  <ArrowUpRight size={12} className="md:w-3.5 md:h-3.5" /> +4.2% Growth
-                </div>
-              </div>
-           </div>
-           
-           {/* Abstract pattern */}
-           <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-cyan-500/5 blur-[80px] rounded-full"></div>
-           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,_rgba(34,211,238,0.1),transparent)] opacity-50"></div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 md:gap-6">
-          {[
-            { label: 'Bonus Reservoir', value: userData?.balances.bonus, icon: Zap, color: 'text-pink-400', bg: 'bg-pink-500/10' },
-            { label: 'Network Yield', value: userData?.balances.referral, icon: Award, color: 'text-cyan-400', bg: 'bg-cyan-500/10' }
-          ].map((wallet, i) => (
-            <div key={i} className="glass-card p-5 md:p-8 flex items-center justify-between group hover:border-white/20 transition-all border-white/5 animate-float-slow shadow-xl" style={{ animationDelay: `${i * 0.8}s` }}>
-              <div className="flex items-center gap-4 md:gap-6">
-                <div className={`w-12 h-12 md:w-16 md:h-16 ${wallet.bg} rounded-xl md:rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl truncate`}>
-                  <wallet.icon size={20} className={`${wallet.color} md:w-7 md:h-7`} />
-                </div>
-                <div>
-                  <p className="text-[8px] md:text-[9px] text-white/20 font-black uppercase tracking-[0.2em] mb-0.5 md:mb-1">{wallet.label}</p>
-                  <p className="text-xl md:text-3xl font-display font-black leading-none tracking-tighter group-hover:text-white transition-colors">₦{wallet.value?.toLocaleString()}</p>
-                </div>
-              </div>
-              <button className="p-3 md:p-4 rounded-xl md:rounded-2xl bg-white/5 border border-white/5 text-white/20 hover:text-cyan-400 hover:border-cyan-500/30 transition-all">
-                <ArrowUpRight size={16} className="md:w-5 md:h-5" />
-              </button>
             </div>
+
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Total Liquid Assets</span>
+                <div className="h-px w-8 bg-white/10"></div>
+              </div>
+              <h2 className="text-5xl md:text-7xl font-display font-black text-white tracking-tighter leading-none flex items-baseline gap-2">
+                <span className="text-cyan-400">₦</span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  {(userData?.balances?.main || 0).toLocaleString()}
+                </motion.span>
+              </h2>
+              
+              <div className="mt-8 flex gap-4">
+                <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-2">
+                  <ArrowUpRight size={14} className="text-emerald-400" />
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">+12.5%</span>
+                </div>
+                <div className="px-4 py-2 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-2">
+                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">Yield: High</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
+          {[
+            { label: 'Bonus Reservoir', value: userData?.balances.bonus, icon: Zap, color: 'text-pink-400', from: 'from-pink-900/20', to: 'to-transparent' },
+            { label: 'Network Yield', value: userData?.balances.referral, icon: Award, color: 'text-cyan-400', from: 'from-cyan-900/20', to: 'to-transparent' }
+          ].map((wallet, i) => (
+            <motion.div 
+              key={i} 
+              whileHover={{ x: 10, scale: 1.01 }}
+              className="relative group cursor-pointer"
+            >
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-white/0 via-white/5 to-white/0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div className={`relative glass-card p-8 flex items-center justify-between border-white/5 bg-gradient-to-br ${wallet.from} ${wallet.to} rounded-3xl overflow-hidden`}>
+                <div className="flex items-center gap-6">
+                  <div className={`w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:rotate-12 transition-transform shadow-2xl`}>
+                    <wallet.icon size={28} className={wallet.color} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.2em] mb-1">{wallet.label}</p>
+                    <p className="text-3xl font-display font-black leading-none tracking-tighter">₦{wallet.value?.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:text-cyan-400 group-hover:scale-110 transition-all">
+                  <ArrowUpRight size={20} />
+                </div>
+              </div>
+            </motion.div>
           ))}
         </div>
       </div>

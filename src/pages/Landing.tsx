@@ -18,106 +18,157 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen text-white overflow-hidden selection:bg-cyan-500/30">
-      {/* Background Orbs */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[10%] right-[5%] w-[500px] h-[500px] bg-cyan-600/20 blur-[120px] rounded-full animate-pulse"></div>
-        <div className="absolute bottom-[10%] left-[5%] w-[400px] h-[400px] bg-blue-600/10 blur-[100px] rounded-full"></div>
+      {/* Background Orbs & Cinematic Space */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10 bg-[#020617]">
+        <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,#1e293b_0%,transparent_70%)] opacity-20"></div>
+        <motion.div 
+          animate={{ x: [0, 50, 0], y: [0, -50, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[20%] right-[10%] w-[600px] h-[600px] bg-cyan-600/10 blur-[150px] rounded-full" 
+        />
+        <motion.div 
+          animate={{ x: [0, -40, 0], y: [0, 40, 0] }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-[20%] left-[10%] w-[500px] h-[500px] bg-pink-600/10 blur-[150px] rounded-full" 
+        />
+        {/* Star Field Simulation */}
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '100px 100px' }}></div>
       </div>
 
       {/* Nav */}
-      <nav className="max-w-7xl mx-auto px-6 py-8 flex justify-between items-center">
+      <nav className="max-w-7xl mx-auto px-6 py-8 flex justify-between items-center relative z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.5)]">
             <Zap className="w-6 h-6 text-white fill-white" />
           </div>
-          <span className="font-display font-bold text-2xl tracking-tighter">NEXORA</span>
+          <span className="font-display font-black text-2xl tracking-tighter italic">NEXORA</span>
         </div>
         <button 
           onClick={handleSignIn}
-          className="px-6 py-2 rounded-xl glass border-cyan-500/10 hover:border-cyan-500/40 transition-all font-bold text-sm tracking-wide"
+          className="px-8 py-2.5 rounded-full glass border border-white/10 hover:bg-white/10 transition-all font-black text-xs tracking-[0.2em] relative group overflow-hidden"
         >
-          SIGN IN
+          <span className="relative z-10">SIGN IN</span>
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
       </nav>
 
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-6 pt-16 pb-32 grid lg:grid-cols-2 gap-16 items-center">
+      <section className="max-w-7xl mx-auto px-6 pt-24 pb-48 grid lg:grid-cols-2 gap-24 items-center relative">
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          initial={{ opacity: 0, x: -100 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          className="relative z-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase tracking-widest mb-8">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-            </span>
-            Platform Live: Join the Revolution
-          </div>
-          <h1 className="text-7xl md:text-9xl font-display font-bold leading-[0.85] tracking-tighter mb-8 italic">
-            EARN. <br />
-            GROW. <br />
-            <span className="text-gradient">REPEAT.</span>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/5 border border-white/10 text-cyan-400 text-[11px] font-black uppercase tracking-[0.3em] mb-10 shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+          >
+            <div className="flex gap-1.5">
+              {[1, 2, 3].map(i => (
+                <span key={i} className={`h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse`} style={{ animationDelay: `${i * 0.2}s` }} />
+              ))}
+            </div>
+            Universal Earnings Protocol v2.0
+          </motion.div>
+          <h1 className="text-8xl md:text-[11rem] font-display font-black leading-[0.8] tracking-tighter mb-10 italic">
+            EARN <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500 drop-shadow-[0_0_30px_rgba(6,182,212,0.3)]">5× FASTER.</span>
           </h1>
-          <p className="text-white/50 text-lg max-w-sm mb-10 leading-relaxed font-light">
-            Monetize your time through completing tasks, learning new skills, and building a powerful referral network. 
+          <p className="text-white/40 text-xl max-w-sm mb-12 leading-relaxed font-medium">
+            The world's first cinematic earning engine. Complete nodes, solve matrices, and unlock your true financial potential.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-wrap gap-6">
             <button 
               onClick={handleSignIn}
-              className="btn-primary flex items-center justify-center gap-2 text-lg px-8 group"
+              className="relative group px-10 py-5 bg-cyan-500 rounded-2xl font-black text-lg tracking-tighter flex items-center gap-3 overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.4)]"
             >
-              Get Started <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              EARN 5× NOW <ArrowRight className="group-hover:translate-x-2 transition-transform" />
             </button>
-            <button className="btn-outline font-bold tracking-widest text-sm uppercase">Explore Ecosystem</button>
+            <button className="px-10 py-5 rounded-2xl border-2 border-white/10 font-black text-lg tracking-tighter hover:bg-white/5 transition-all text-white/60 hover:text-white">
+              WATCH TRAILER
+            </button>
           </div>
         </motion.div>
 
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 0.2 }}
-          className="relative hidden lg:block"
-        >
-          <div className="relative z-10 p-2 glass-card border-white/5 shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-700 cursor-none">
-            <div className="aspect-[16/10] bg-slate-900 rounded-3xl overflow-hidden relative">
-              <img 
-                src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80&w=1200" 
-                alt="App Preview" 
-                className="w-full h-full object-cover opacity-60"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-cyan-500/10"></div>
-              
-              {/* Floating UI elements */}
-              <div className="absolute top-10 left-10 glass p-4 rounded-2xl border-white/10 w-48">
-                 <div className="flex justify-between items-center mb-4">
-                   <div className="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center">
-                     <Users size={16} />
-                   </div>
-                   <div className="text-[10px] bg-pink-500/10 px-2 py-0.5 rounded text-pink-400 font-bold">+12%</div>
-                 </div>
-                 <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Total Referrals</p>
-                 <p className="text-xl font-display font-bold">1,284</p>
-              </div>
+        <div className="relative flex justify-center items-center">
+          {/* Glowing Ring */}
+          <div className="absolute w-[120%] aspect-square border border-white/5 rounded-full animate-spin-slow"></div>
+          <div className="absolute w-[110%] aspect-square border border-white/10 rounded-full animate-pulse"></div>
 
-              <div className="absolute bottom-10 right-10 glass p-4 rounded-2xl border-white/10 w-48 animate-pulse">
-                 <div className="flex justify-between items-center mb-4">
-                   <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                     <TrendingUp size={16} />
-                   </div>
-                   <div className="text-[10px] bg-cyan-500/10 px-2 py-0.5 rounded text-cyan-400 font-bold">LIVE</div>
-                 </div>
-                 <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Wallet Earnings</p>
-                 <p className="text-xl font-display font-bold">₦25,400</p>
+          {/* Floating Golden Coin */}
+          <motion.div 
+            animate={{ 
+              y: [-20, 20, -20],
+              rotateY: [0, 360],
+              scale: [1, 1.05, 1]
+            }}
+            transition={{ 
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="relative z-20"
+          >
+            <div className="w-64 h-64 md:w-80 md:h-80 bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-700 rounded-full shadow-[0_0_100px_rgba(245,158,11,0.5)] flex items-center justify-center border-t-4 border-amber-200/50 p-4">
+              <div className="w-full h-full rounded-full border-4 border-amber-600/30 flex items-center justify-center bg-yellow-600/10">
+                <Zap className="w-32 h-32 md:w-40 md:h-40 text-amber-100 fill-amber-100 drop-shadow-[0_0_30px_rgba(0,0,0,0.5)]" />
               </div>
             </div>
-          </div>
-          
-          {/* Background Decorative elements */}
-          <div className="absolute -top-10 -right-10 w-24 h-24 bg-cyan-500/20 blur-2xl rounded-full"></div>
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-pink-500/20 blur-3xl rounded-full"></div>
-        </motion.div>
+            
+            {/* Parallax elements */}
+            <motion.div
+               animate={{ x: [-10, 10, -10], y: [-10, 10, -10] }}
+               transition={{ duration: 5, repeat: Infinity }}
+               className="absolute top-0 -right-10 w-24 h-24 glass rounded-3xl border-white/20 flex flex-col items-center justify-center shadow-2xl backdrop-blur-3xl"
+            >
+              <TrendingUp className="text-cyan-400 mb-1" />
+              <span className="text-[10px] font-black">+500%</span>
+            </motion.div>
+          </motion.div>
+
+          {/* Floating Particles */}
+          {[...Array(6)].map((_, i) => (
+            <motion.div
+              key={i}
+              animate={{ 
+                y: [0, -100, -200],
+                x: [0, (i % 2 === 0 ? 50 : -50), (i % 2 === 0 ? 100 : -100)],
+                opacity: [0, 1, 0],
+                scale: [0, 1, 0]
+              }}
+              transition={{
+                duration: 4 + Math.random() * 4,
+                repeat: Infinity,
+                delay: i * 0.8
+              }}
+              className="absolute w-2 h-2 bg-cyan-400 rounded-full blur-[2px]"
+              style={{ left: `${20 + i * 15}%`, top: '50%' }}
+            />
+          ))}
+        </div>
       </section>
+
+      {/* Scrolling Ticker */}
+      <div className="relative z-20 py-10 bg-black/40 backdrop-blur-md border-y border-white/5 overflow-hidden">
+        <motion.div 
+          animate={{ x: [0, -1000] }}
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          className="flex whitespace-nowrap gap-24 items-center"
+        >
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="flex gap-12 items-center">
+              <span className="text-4xl font-display font-black tracking-tighter opacity-10">THE FUTURE IS LIQUID</span>
+              <Zap className="text-cyan-500 fill-cyan-500" />
+              <span className="text-4xl font-display font-black tracking-tighter text-gradient">EARN 5× ON EVERY NODE</span>
+              <div className="w-2 h-2 rounded-full bg-white/20" />
+            </div>
+          ))}
+        </motion.div>
+      </div>
 
       {/* Features */}
       <section className="max-w-7xl mx-auto px-6 py-32 relative">
