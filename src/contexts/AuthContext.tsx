@@ -110,17 +110,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []); // Dependencies empty to run once on mount
 
   const fetchUserData = async (uid: string) => {
-    // Return if already fetching THIS specific UID and we have data
-    if (fetchingRef.current === uid && userDataRef.current) {
-      setLoading(false);
-      return;
-    }
-    
-    // If we are already mid-fetch for this exact user, just let the previous one finish
+    // Return if already fetching THIS specific UID
     if (fetchingRef.current === uid) return;
     
     fetchingRef.current = uid;
-    setLoading(true);
+    
+    // Only set global loading if we don't have data yet
+    if (!userDataRef.current) {
+      setLoading(true);
+    }
     
     try {
       console.log('Fetching user data for:', uid);

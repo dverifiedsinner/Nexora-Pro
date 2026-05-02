@@ -38,8 +38,7 @@ export default function Wallet() {
 
   const handleRecharge = async () => {
     const amount = Number(rechargeAmount);
-    if (!userData || isNaN(amount) || amount <= 0) {
-      alert('Invalid recharge amount');
+    if (!userData || isNaN(amount)) {
       return;
     }
     
@@ -111,10 +110,10 @@ export default function Wallet() {
       };
       const newTransaction = {
         type: 'withdrawal',
-        title: 'LIQUIDATION',
+        title: 'LIQUIDATION REQUEST',
         amount: -amount,
         time: new Date().toISOString(),
-        status: 'SETTLED'
+        status: 'PENDING'
       };
 
       const { error } = await supabase
@@ -144,8 +143,7 @@ export default function Wallet() {
     }
     
     const finalAmount = conversionType === 'airtime' ? Number(convertValue) : dataPackage.price;
-    if (isNaN(finalAmount) || finalAmount <= 0) {
-      alert("Invalid value selected.");
+    if (isNaN(finalAmount)) {
       return;
     }
 
@@ -417,7 +415,7 @@ export default function Wallet() {
                          type="number" 
                         value={withdrawAmount}
                         onChange={(e) => setWithdrawAmount(e.target.value)}
-                        placeholder="MIN 2,000" 
+                        placeholder="ENTER AMOUNT" 
                         className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 pl-12 md:pl-16 pr-6 md:pr-8 focus:outline-none focus:border-cyan-500 transition-all font-black text-xl md:text-2xl placeholder:text-white/10 placeholder:text-[10px] placeholder:tracking-[0.2em] focus:bg-white/[0.08]"
                       />
                     </div>
@@ -617,7 +615,7 @@ export default function Wallet() {
              </div>
              <h4 className="font-display font-black text-xl md:text-2xl mb-3 md:mb-4 italic uppercase tracking-tight relative z-10">Maximizer <br /> Protocol.</h4>
              <p className="text-xs md:text-sm text-white/40 leading-relaxed font-light italic relative z-10">
-               Leverage your <b>Bonus Reservoir</b> for instant Airtime Swap once you hit the ₦2,000 baseline. Network growth accelerates liquidity.
+               Leverage your <b>Bonus Reservoir</b> for instant Airtime Swap once you synchronize your account. Network growth accelerates liquidity.
              </p>
              <div className="mt-6 md:mt-8 relative z-10">
                 <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">

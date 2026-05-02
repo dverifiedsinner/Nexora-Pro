@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Award, Clock, Star, Zap, ChevronRight, Search, Filter, AlertCircle, Check, ArrowRight, Loader2 } from 'lucide-react';
+import { BookOpen, Award, Clock, Star, Zap, ChevronRight, Search, Filter, AlertCircle, Check, ArrowRight, Loader2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Quiz from '../components/Quiz';
@@ -10,6 +10,7 @@ export default function Courses() {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [isQuizzing, setIsQuizzing] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [activeArticle, setActiveArticle] = useState<any>(null);
 
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +20,14 @@ export default function Courses() {
       try {
         const { data, error } = await supabase.from('courses').select('*');
         if (data && data.length > 0) {
-          // Merge with default questions if needed
-          const merged = data.map((c: any) => ({
-            ...defaultCourses.find(dc => dc.id === c.id || dc.title === c.title),
-            ...c,
-            // Ensure reward is 3.5x if not set or just as safety
-            reward: c.reward || (c.price * 3.5)
-          }));
+          const merged = data.map((c: any) => {
+            const defaultCourse = defaultCourses.find(dc => dc.title === c.title);
+            return {
+              ...defaultCourse,
+              ...c,
+              reward: c.reward || (c.price * 3.5)
+            };
+          });
           setCourses(merged);
         } else {
           setCourses(defaultCourses);
@@ -99,18 +101,21 @@ export default function Courses() {
     }
   ];
 
-  const handleEnroll = async (course: any, walletType: 'main' | 'bonus' = 'main') => {
-    if (!userData) return;
-    
-    const confirmSecure = window.confirm("SECURE NOW?");
-    if (!confirmSecure) return;
+  const [enrollConfirmation, setEnrollConfirmation] = useState<{ course: any, walletType: 'main' | 'bonus' } | null>(null);
 
-    if ((userData.balances as any)[walletType] < course.price) {
+  const handleEnroll = async () => {
+    if (!userData || !enrollConfirmation) return;
+    
+    const { course, walletType } = enrollConfirmation;
+
+    if (Number((userData.balances as any)[walletType]) < course.price) {
       alert(`Insufficient funds in ${walletType} Wallet. Please fund your node.`);
+      setEnrollConfirmation(null);
       return;
     }
 
     setIsEnrolling(true);
+    setEnrollConfirmation(null);
     try {
       const newBalances = {
         ...userData.balances,
@@ -180,7 +185,11 @@ export default function Courses() {
 
   const handleStartAudit = (course: any) => {
     setSelectedCourse(course);
-    setIsQuizzing(true);
+    if (course.article) {
+      setActiveArticle(course);
+    } else {
+      setIsQuizzing(true);
+    }
   };
 
   const handleQuizComplete = async (finalEarning: number) => {
@@ -211,7 +220,7 @@ export default function Courses() {
     return (userData as any)?.enrolledCourses?.includes(courseId);
   };
 
-  if (loading) {
+  if (loading && courses.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 size={48} className="text-cyan-400 animate-spin" />
@@ -316,14 +325,14 @@ export default function Courses() {
                   <div className="space-y-4">
                     <button 
                       disabled={isEnrolling}
-                      onClick={() => handleEnroll(course, 'main')}
+                      onClick={() => setEnrollConfirmation({ course, walletType: 'main' })}
                       className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-50"
                     >
                       {isEnrolling ? 'Configuring Node...' : 'Secure Access (Main)'}
                     </button>
                     <button 
                       disabled={isEnrolling}
-                      onClick={() => handleEnroll(course, 'bonus')}
+                      onClick={() => setEnrollConfirmation({ course, walletType: 'bonus' })}
                       className="w-full btn-outline py-5 uppercase font-black tracking-[0.2em] text-xs active:scale-95 transition-all text-white/40 border-white/5 hover:border-cyan-500/30 hover:text-white"
                     >
                       Redeem Bonus Yield
@@ -337,6 +346,127 @@ export default function Courses() {
       </div>
 
       <AnimatePresence>
+        {enrollConfirmation && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 sm:p-0">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEnrollConfirmation(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg glass-card p-8 md:p-12 border-white/10 bg-[#0d1117] overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 blur-3xl rounded-full"></div>
+              
+              <div className="relative z-10 space-y-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                    <ShieldAlert className="text-cyan-400" size={28} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-display font-black uppercase tracking-tight italic">Secure Node?</h3>
+                    <p className="text-[10px] text-white/30 uppercase font-bold tracking-widest">Protocol Authorization Required</p>
+                  </div>
+                </div>
+
+                <div className="glass-card p-6 border-white/5 bg-white/[0.02] space-y-4">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Resource</span>
+                    <span className="font-bold text-white uppercase">{enrollConfirmation.course.title}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Vesting Amount</span>
+                    <span className="font-bold text-white">₦{enrollConfirmation.course.price.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Authorized Wallet</span>
+                    <span className="font-bold text-cyan-400 uppercase">{enrollConfirmation.walletType} Wallet</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <button 
+                    onClick={() => setEnrollConfirmation(null)}
+                    className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors"
+                  >
+                    Abort
+                  </button>
+                  <button 
+                    onClick={handleEnroll}
+                    className="flex-1 btn-primary py-4 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20"
+                  >
+                    Secure Now
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {activeArticle && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveArticle(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-4xl max-h-[85vh] glass-card flex flex-col border-white/10 bg-[#0d1117] overflow-hidden"
+            >
+              <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                <div>
+                  <h3 className="text-xl font-display font-black uppercase italic tracking-tight text-cyan-400">{activeArticle.title}</h3>
+                  <p className="text-[10px] text-white/20 uppercase font-black tracking-widest mt-1">Audit Session Protocol</p>
+                </div>
+                <button 
+                  onClick={() => setActiveArticle(null)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors text-white/40"
+                >
+                  <AlertCircle size={20} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-6">
+                <style dangerouslySetInnerHTML={{ __html: `
+                  .article-content p { margin-bottom: 1.5rem; line-height: 1.8; color: rgba(255,255,255,0.6); font-style: italic; font-weight: 300; }
+                  .article-content h2 { font-size: 1.5rem; font-weight: 900; text-transform: uppercase; margin: 2rem 0 1rem; color: #fff; letter-spacing: -0.05em; font-style: italic; }
+                `}} />
+                <div className="article-content text-sm md:text-base whitespace-pre-wrap">
+                  {activeArticle.article}
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-white/5 bg-white/[0.02] flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={() => setActiveArticle(null)}
+                  className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors"
+                >
+                  Back to Hub
+                </button>
+                <button 
+                  onClick={() => {
+                    setActiveArticle(null);
+                    setIsQuizzing(true);
+                  }}
+                  className="flex-1 btn-primary py-4 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20"
+                >
+                  Take Verification Quiz
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isQuizzing && selectedCourse && (
           <Quiz 
             courseId={selectedCourse.id}

@@ -95,7 +95,9 @@ export default function Tasks() {
     }
   ];
 
-  const handleCompleteTask = async (task: any) => {
+  const [visitedLinks, setVisitedLinks] = useState<string[]>([]);
+
+  const handleTaskAction = async (task: any) => {
     if (!userData) return;
     
     // Check if already completed
@@ -104,10 +106,16 @@ export default function Tasks() {
       return;
     }
 
-    if (task.link && task.link !== '#') {
-      window.open(task.link, '_blank');
+    // Step 1: If not visited, open link
+    if (!visitedLinks.includes(task.id)) {
+      if (task.link && task.link !== '#') {
+        window.open(task.link, '_blank');
+        setVisitedLinks(prev => [...prev, task.id]);
+        return;
+      }
     }
 
+    // Step 2: If visited, allow redemption
     setProcessingTaskId(task.id);
     
     // Simulate task processing (verification)
@@ -143,6 +151,7 @@ export default function Tasks() {
       if (error) throw error;
 
       alert(`Task completed! ₦${task.reward} added to your Bonus Reservoir.`);
+      setVisitedLinks(prev => prev.filter(id => id !== task.id));
     } catch (err) {
       console.error(err);
       alert('Failed to complete task.');
@@ -167,7 +176,7 @@ export default function Tasks() {
     return userData?.completedTasks?.includes(taskId);
   };
 
-  if (loading) {
+  if (loading && tasks.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 size={48} className="text-cyan-400 animate-spin" />
@@ -243,7 +252,7 @@ export default function Tasks() {
                   <p className={`text-2xl font-display font-black ${isCompleted(task.id) ? 'text-emerald-400' : 'text-cyan-400'}`}>₦{task.reward}</p>
                 </div>
                 <button 
-                  onClick={() => handleCompleteTask(task)}
+                  onClick={() => handleTaskAction(task)}
                   disabled={processingTaskId === task.id || isCompleted(task.id)}
                   className={`btn-primary py-3 md:py-4 px-10 text-[10px] uppercase tracking-[0.2em] font-black shadow-cyan-500/20 w-full md:w-auto flex items-center justify-center gap-2 disabled:opacity-50 ${isCompleted(task.id) ? 'bg-emerald-600/20 border-emerald-500/20 text-emerald-400 cursor-default shadow-none' : ''}`}
                 >
@@ -251,8 +260,10 @@ export default function Tasks() {
                     <><Loader2 size={16} className="animate-spin text-white" /> Verifying</>
                   ) : isCompleted(task.id) ? (
                     'Liquidated'
+                  ) : visitedLinks.includes(task.id) ? (
+                    'Redeem Bonus'
                   ) : (
-                    'Initiate'
+                    'Initiate Task'
                   )}
                 </button>
               </div>

@@ -38,8 +38,8 @@ export default function Games() {
   const [isStaking, setIsStaking] = useState(false);
   const [matches, setMatches] = useState<Match[]>(generateMatches());
   const [selectedMatches, setSelectedMatches] = useState<{ id: string; pick: '1' | 'X' | '2' }[]>([]);
-  const [stakeAmount, setStakeAmount] = useState<string>('200');
-  const [spinStake, setSpinStake] = useState<string>('200');
+  const [stakeAmount, setStakeAmount] = useState<string>('500');
+  const [spinStake, setSpinStake] = useState<string>('500');
   const [stakingStatus, setStakingStatus] = useState<'idle' | 'processing' | 'result'>('idle');
   const [timer, setTimer] = useState(0);
   const [winResult, setWinResult] = useState<boolean | null>(null);
@@ -47,8 +47,7 @@ export default function Games() {
 
   const handleQuantumStake = async () => {
     const amount = Number(stakingAmount);
-    if (!userData || amount <= 0) {
-      alert("Please enter a valid staking amount");
+    if (!userData || isNaN(amount)) {
       return;
     }
 
@@ -111,8 +110,7 @@ export default function Games() {
 
   const handleStake = async () => {
     const amount = Number(stakeAmount);
-    if (!userData || selectedMatches.length === 0 || amount <= 0) {
-      alert("Nexora Protocol: Please enter a valid stake amount.");
+    if (!userData || selectedMatches.length === 0 || isNaN(amount)) {
       return;
     }
     
@@ -163,8 +161,7 @@ export default function Games() {
 
   const toggleSpin = async () => {
     const amount = Number(spinStake);
-    if (!userData || amount <= 0) {
-      alert("Nexora Protocol: Please enter a valid stake amount.");
+    if (!userData || isNaN(amount)) {
       return;
     }
 
@@ -396,13 +393,13 @@ export default function Games() {
                        <div className="space-y-4">
                           <div className="flex justify-between items-end border-t border-white/5 pt-6">
                              <div>
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Variable Stake (₦200 MIN)</p>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Variable Stake (₦)</p>
                                 <div className="relative">
                                    <input 
                                      type="text" 
                                      value={stakeAmount}
                                      onChange={(e) => setStakeAmount(e.target.value)}
-                                     placeholder="200"
+                                     placeholder="ENTER AMOUNT"
                                      className="bg-transparent border-none text-2xl font-display font-black text-white focus:outline-none w-32"
                                    />
                                 </div>
@@ -551,7 +548,7 @@ export default function Games() {
                     Access potential yield up to <span className="text-cyan-400 font-black tracking-widest text-lg ml-1">5X YOUR STAKE!</span>
                  </p>
                  <div className="bg-white/5 border border-white/5 p-6 rounded-3xl space-y-4 shadow-xl">
-                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Nitro Variable Stake (₦200 MIN)</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Nitro Variable Stake (₦)</p>
                     <div className="flex items-center justify-center gap-4">
                        <span className="text-2xl font-display font-black text-cyan-400 opacity-40 italic">₦</span>
                        <input 
@@ -617,14 +614,14 @@ export default function Games() {
                 </div>
 
                 <div className="space-y-6">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Staking Amount (₦2,000 MIN)</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Staking Amount (₦)</p>
                   <div className="bg-black/20 rounded-3xl p-6 border border-white/5 flex items-center justify-between">
                     <input 
                       type="text" 
                       value={stakingAmount}
                       onChange={(e) => setStakingAmount(e.target.value)}
                       className="bg-transparent border-none text-4xl font-display font-black text-white focus:outline-none w-full"
-                      placeholder="5000"
+                      placeholder="ENTER AMOUNT"
                     />
                     <span className="text-2xl font-display font-black text-cyan-400 opacity-40 italic">₦</span>
                   </div>

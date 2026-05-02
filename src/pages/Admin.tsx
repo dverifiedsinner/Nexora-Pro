@@ -11,22 +11,34 @@ import {
   Trash2, 
   Search,
   ArrowUpRight,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  Link as LinkIcon,
+  Globe,
+  Loader2
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { generateCourseContent } from '../services/geminiService';
 
 export default function Admin() {
   const { signOut } = useAuth();
   const [activeTab, setActiveTab] = React.useState<'users' | 'withdrawals' | 'recharges' | 'courses' | 'system' | 'tasks'>('users');
+  const [isGeneratingCourse, setIsGeneratingCourse] = React.useState(false);
+  const [courseForm, setCourseForm] = React.useState({ title: '', price: '5000' });
+  const [taskForm, setTaskForm] = React.useState({ title: '', reward: '250', type: 'daily' as 'daily' | 'sponsored', link: '', desc: '', category: 'Social' });
+  const [isAddingCourse, setIsAddingCourse] = React.useState(false);
+  const [isAddingTask, setIsAddingTask] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [users, setUsers] = React.useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = React.useState('');
   const [withdrawals, setWithdrawals] = React.useState<any[]>([]);
   const [recharges, setRecharges] = React.useState<any[]>([]);
   const [tasks, setTasks] = React.useState<any[]>([]);
   const [selectedUser, setSelectedUser] = React.useState<any | null>(null);
   const [isEditingUser, setIsEditingUser] = React.useState(false);
+  const [balanceAdjustment, setBalanceAdjustment] = React.useState({ amount: '', type: 'credit', wallet: 'main' as 'main' | 'bonus' | 'referral' | 'investment' });
 
   const [systemConfig, setSystemConfig] = React.useState({
     rewardMultiplier: '5',
@@ -44,25 +56,27 @@ export default function Admin() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Admin: Fetching network data...');
         // Fetch Users
-        const { data: usersData } = await supabase.from('profiles').select('*');
-        if (usersData) setUsers(usersData);
+        const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').order('createdAt', { ascending: false });
+        
+        if (usersError) {
+          console.error('Admin: Users fetch error:', usersError);
+        }
 
-        // Fetch System Config
-        const { data: configData } = await supabase.from('settings').select('*').eq('id', 'system').single();
-        if (configData) setSystemConfig(configData);
-
-        // Fetch Withdrawals & Recharges
-        const { data: profileSyncData } = await supabase.from('profiles').select('*');
-        if (profileSyncData) {
+        if (usersData) {
+          console.log(`Admin: Loaded ${usersData.length} users`);
+          setUsers(usersData);
+          
+          // Derive Withdrawals & Recharges from loaded users
           const allWithdrawals: any[] = [];
           const allRecharges: any[] = [];
           
-          profileSyncData.forEach(u => {
-            if (u.transactions) {
+          usersData.forEach(u => {
+            if (u.transactions && Array.isArray(u.transactions)) {
               u.transactions.forEach((t: any) => {
                 const commonData = { ...t, userId: u.uid, userName: u.displayName, userEmail: u.email };
-                if (t.type === 'withdrawal' && t.status === 'SETTLED') {
+                if (t.type === 'withdrawal' && t.status === 'PENDING') {
                    allWithdrawals.push(commonData);
                 }
                 if (t.type === 'recharge' && (t.status === 'PENDING' || t.status === 'PENDING_VERIFICATION')) {
@@ -75,13 +89,17 @@ export default function Admin() {
           setRecharges(allRecharges);
         }
 
+        // Fetch System Config
+        const { data: configData } = await supabase.from('settings').select('*').eq('id', 'system').maybeSingle();
+        if (configData) setSystemConfig(configData);
+
         // Fetch Tasks
         const { data: tasksData } = await supabase.from('tasks').select('*');
         if (tasksData && tasksData.length > 0) {
           setTasks(tasksData);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Admin: Critical fetch error:', err);
       }
     };
     fetchData();
@@ -112,26 +130,46 @@ export default function Admin() {
   };
 
   const createCourse = async () => {
-    const title = prompt("Course Title:");
-    if (!title) return;
-    const priceStr = prompt("Price (₦):", "5000");
-    const price = Number(priceStr);
-    if (isNaN(price)) return;
+    if (!courseForm.title || !courseForm.price) {
+      alert("Title and price are required.");
+      return;
+    }
 
+    setIsGeneratingCourse(true);
     try {
+      // 1. Generate AI Content
+      const aiContent = await generateCourseContent(courseForm.title);
+      
+      // 2. Prepare Course Object
       const newCourse = {
-        title,
-        price,
-        roi: '5X',
-        enrolled: 0,
+        title: aiContent.title,
+        article: aiContent.article,
+        questions: aiContent.questions,
+        price: Number(courseForm.price),
+        reward: Number(courseForm.price) * 3.5,
+        category: 'Network AI',
+        lessons: 5,
+        duration: '1h 30m',
+        rating: 5.0,
+        members: 0,
+        image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800',
         status: 'Active',
         createdAt: new Date().toISOString()
       };
+
+      // 3. Save to DB
       const { data, error } = await supabase.from('courses').insert([newCourse]).select().single();
       if (error) throw error;
-      setCourseList(prev => [...prev, data]);
+      
+      setCourseList(prev => [data, ...prev]);
+      setCourseForm({ title: '', price: '5000' });
+      setIsAddingCourse(false);
+      alert('AI-Generated Course deployed to network.');
     } catch (err) {
       console.error(err);
+      alert('AI Generation failed. Please try a different title or check network.');
+    } finally {
+      setIsGeneratingCourse(false);
     }
   };
 
@@ -285,27 +323,30 @@ export default function Admin() {
   };
 
   const createTask = async () => {
-    const title = prompt("Task Title:");
-    if (!title) return;
-    const rewardStr = prompt("Reward (₦):", "100");
-    const reward = Number(rewardStr);
-    if (isNaN(reward)) return;
+    if (!taskForm.title || !taskForm.reward) {
+      alert("Required fields missing.");
+      return;
+    }
 
     try {
       const newTask = {
-        title,
-        reward,
-        desc: 'New task description',
-        type: 'daily',
-        category: 'Social',
-        link: '#',
+        title: taskForm.title,
+        reward: Number(taskForm.reward),
+        desc: taskForm.desc || 'Standard Protocol Task',
+        type: taskForm.type,
+        category: taskForm.category,
+        link: taskForm.link || '#',
         createdAt: new Date().toISOString()
       };
       const { data, error } = await supabase.from('tasks').insert([newTask]).select().single();
       if (error) throw error;
-      setTasks(prev => [...prev, data]);
+      setTasks(prev => [data, ...prev]);
+      setTaskForm({ title: '', reward: '250', type: 'daily', link: '', desc: '', category: 'Social' });
+      setIsAddingTask(false);
+      alert('Operational task broadcasted.');
     } catch (err) {
       console.error(err);
+      alert('Task deployment failed.');
     }
   };
 
@@ -317,6 +358,48 @@ export default function Admin() {
       setTasks(prev => prev.filter(t => t.id !== id));
     } catch (err) { console.error(err); }
   }
+
+  const filteredUsers = users.filter(u => 
+    (u.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.uid || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAdjustBalance = () => {
+    if (!selectedUser || !balanceAdjustment.amount) return;
+    
+    const amount = Number(balanceAdjustment.amount);
+    if (isNaN(amount)) return;
+
+    const currentBalances = { ...selectedUser.balances };
+    const wallet = balanceAdjustment.wallet;
+    
+    if (balanceAdjustment.type === 'credit') {
+      currentBalances[wallet] = (currentBalances[wallet] || 0) + amount;
+    } else {
+      currentBalances[wallet] = Math.max(0, (currentBalances[wallet] || 0) - amount);
+    }
+
+    const transaction = {
+      type: balanceAdjustment.type === 'credit' ? 'system_credit' : 'system_debit',
+      title: `${balanceAdjustment.type === 'credit' ? 'CREDIT' : 'DEBIT'} BY ADMIN`,
+      amount: balanceAdjustment.type === 'credit' ? amount : -amount,
+      time: new Date().toISOString(),
+      status: 'SETTLED',
+      wallet: wallet
+    };
+
+    const updatedTransactions = [...(selectedUser.transactions || []), transaction];
+
+    setSelectedUser({
+      ...selectedUser,
+      balances: currentBalances,
+      transactions: updatedTransactions
+    });
+
+    setBalanceAdjustment({ ...balanceAdjustment, amount: '' });
+    alert(`${balanceAdjustment.type === 'credit' ? 'Credited' : 'Debited'} ₦${amount.toLocaleString()} ${balanceAdjustment.type === 'credit' ? 'to' : 'from'} ${wallet} wallet.`);
+  };
 
   const stats = [
     { label: 'Total Nodes', value: users.length.toLocaleString(), icon: Users, color: 'text-cyan-400' },
@@ -418,19 +501,170 @@ export default function Admin() {
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 md:w-4 md:h-4" size={14} />
             <input 
               type="text" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={`Query ${activeTab} registry...`} 
               className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-2.5 md:py-3 pl-12 pr-6 text-[10px] md:text-sm font-medium focus:outline-none focus:border-cyan-500/40 focus:bg-white/[0.08] transition-all"
             />
           </div>
           {activeTab === 'courses' || activeTab === 'tasks' ? (
             <button 
-              onClick={activeTab === 'courses' ? createCourse : createTask}
+              onClick={() => activeTab === 'courses' ? setIsAddingCourse(true) : setIsAddingTask(true)}
               className="w-full md:w-auto btn-primary py-2.5 md:py-3 px-6 md:px-8 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 md:gap-3 shadow-cyan-500/20 active:scale-95 transition-all"
             >
               <Plus size={16} className="md:w-[18px] md:h-[18px]" /> {activeTab === 'courses' ? 'New Curriculum' : 'New Task'}
             </button>
           ) : null}
         </div>
+
+        <AnimatePresence>
+          {isAddingCourse && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-cyan-500/5 border-b border-white/5"
+            >
+              <div className="p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <Sparkles className="text-cyan-400" size={18} />
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white/80">Deploy AI Content Node</h3>
+                   </div>
+                   <button onClick={() => setIsAddingCourse(false)} className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white transition-colors">Cancel</button>
+                </div>
+                <div className="grid md:grid-cols-3 gap-6">
+                   <div className="md:col-span-2 space-y-2">
+                      <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Scientific Title / Topic</label>
+                      <input 
+                        type="text" 
+                        value={courseForm.title}
+                        onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
+                        placeholder="e.g. Quantum Yield Optimization 101"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-sm font-medium focus:outline-none focus:border-cyan-500/40"
+                      />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Entry Fee (₦)</label>
+                      <input 
+                        type="number" 
+                        value={courseForm.price}
+                        onChange={(e) => setCourseForm({ ...courseForm, price: e.target.value })}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-sm font-display font-black text-white focus:outline-none focus:border-cyan-500/40"
+                      />
+                   </div>
+                </div>
+                <button 
+                  onClick={createCourse}
+                  disabled={isGeneratingCourse}
+                  className="w-full btn-primary py-4 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                >
+                  {isGeneratingCourse ? (
+                    <><Loader2 size={16} className="animate-spin text-white" /> AI is constructing curriculum...</>
+                  ) : (
+                    <><Sparkles size={16} /> Generate & Deploy with AI</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {isAddingTask && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-pink-500/5 border-b border-white/5"
+            >
+              <div className="p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <Globe className="text-pink-400" size={18} />
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white/80">Broadcast Network Mission</h3>
+                   </div>
+                   <button onClick={() => setIsAddingTask(false)} className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white transition-colors">Cancel</button>
+                </div>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                   <div className="lg:col-span-2 space-y-2">
+                      <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Task Intent / Title</label>
+                      <input 
+                        type="text" 
+                        value={taskForm.title}
+                        onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                        placeholder="e.g. Join the Alpha Protocol"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-sm font-medium focus:outline-none"
+                      />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Protocol Reward (₦)</label>
+                      <input 
+                        type="number" 
+                        value={taskForm.reward}
+                        onChange={(e) => setTaskForm({ ...taskForm, reward: e.target.value })}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-sm font-display font-black text-white focus:outline-none"
+                      />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Task Type</label>
+                      <select 
+                        value={taskForm.type}
+                        onChange={(e) => setTaskForm({ ...taskForm, type: e.target.value as any })}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black uppercase tracking-widest focus:outline-none"
+                      >
+                        <option value="daily">Daily Mission</option>
+                        <option value="sponsored">Sponsored Node</option>
+                      </select>
+                   </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">External Link (Redirect URL)</label>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+                        <input 
+                          type="text" 
+                          value={taskForm.link}
+                          onChange={(e) => setTaskForm({ ...taskForm, link: e.target.value })}
+                          placeholder="https://..."
+                          className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-xs font-medium focus:outline-none"
+                        />
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Technical Category</label>
+                      <select 
+                        value={taskForm.category}
+                        onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black uppercase tracking-widest focus:outline-none"
+                      >
+                        <option value="Social">Social Integration</option>
+                        <option value="Video">Visual Asset</option>
+                        <option value="Ad">Sponsored Portal</option>
+                        <option value="Feedback">System Feedback</option>
+                        <option value="One-time">One-time protocol</option>
+                      </select>
+                   </div>
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Protocol Description</label>
+                   <textarea 
+                     value={taskForm.desc}
+                     onChange={(e) => setTaskForm({ ...taskForm, desc: e.target.value })}
+                     placeholder="Mission parameters..."
+                     rows={2}
+                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs font-medium focus:outline-none resize-none"
+                   />
+                </div>
+                <button 
+                  onClick={createTask}
+                  className="w-full btn-primary bg-pink-600 hover:bg-pink-500 shadow-pink-500/20 py-4 text-[10px] font-black uppercase tracking-widest"
+                >
+                  Broadcast Mission
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="overflow-x-auto">
           {activeTab === 'users' && (
@@ -444,7 +678,7 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.02] text-[10px] md:text-xs">
-                {users.map((u, i) => (
+                {filteredUsers.length > 0 ? filteredUsers.map((u, i) => (
                   <tr key={i} className="hover:bg-white/[0.01] transition-all group">
                     <td className="px-6 md:px-8 py-4 md:py-6">
                       <div className="flex items-center gap-3 md:gap-4">
@@ -458,7 +692,9 @@ export default function Admin() {
                       </div>
                     </td>
                     <td className="px-6 md:px-8 py-4 md:py-6 text-center">
-                      <span className="px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400">Active</span>
+                      <span className={`px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest ${u.isAdmin ? 'bg-pink-500/10 text-pink-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
+                        {u.isAdmin ? 'Admin' : 'Active'}
+                      </span>
                     </td>
                     <td className="px-6 md:px-8 py-4 md:py-6 text-center font-display font-black text-white/80 text-xs md:text-sm">₦{Number(u.balances?.main || 0).toLocaleString()}</td>
                     <td className="px-6 md:px-8 py-4 md:py-6">
@@ -475,7 +711,16 @@ export default function Admin() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={4} className="py-24 text-center">
+                      <div className="space-y-4">
+                        <Users className="w-12 h-12 text-white/10 mx-auto" />
+                        <p className="text-[10px] text-white/20 uppercase font-black tracking-[0.3em]">No registered nodes detected in this sector.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
@@ -873,7 +1118,7 @@ export default function Admin() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Course Vault</label>
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Investment Vault</label>
                 <div className="relative group">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">₦</span>
                   <input 
@@ -887,6 +1132,44 @@ export default function Admin() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="glass-card p-6 border-cyan-500/20 bg-cyan-500/5 space-y-4">
+               <h4 className="text-[10px] font-black uppercase text-cyan-400 tracking-widest">Adjust Balance (Credit/Debit)</h4>
+               <div className="flex gap-3">
+                  <select 
+                    value={balanceAdjustment.wallet}
+                    onChange={(e) => setBalanceAdjustment({ ...balanceAdjustment, wallet: e.target.value as any })}
+                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase focus:outline-none"
+                  >
+                    <option value="main">Main Wallet</option>
+                    <option value="bonus">Bonus Wallet</option>
+                    <option value="referral">Referral Wallet</option>
+                  </select>
+                  <select 
+                    value={balanceAdjustment.type}
+                    onChange={(e) => setBalanceAdjustment({ ...balanceAdjustment, type: e.target.value as any })}
+                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase focus:outline-none"
+                  >
+                    <option value="credit">Credit (+)</option>
+                    <option value="debit">Debit (-)</option>
+                  </select>
+               </div>
+               <div className="flex gap-3">
+                  <input 
+                    type="number" 
+                    value={balanceAdjustment.amount}
+                    onChange={(e) => setBalanceAdjustment({ ...balanceAdjustment, amount: e.target.value })}
+                    placeholder="AMOUNT"
+                    className="flex-[2] bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none"
+                  />
+                  <button 
+                    onClick={handleAdjustBalance}
+                    className="flex-1 btn-primary py-3 text-[9px] font-black uppercase"
+                  >
+                    Apply
+                  </button>
+               </div>
             </div>
 
             <div className="space-y-4">
@@ -917,7 +1200,8 @@ export default function Admin() {
                    handleUpdateUser(selectedUser.uid, { 
                      balances: selectedUser.balances, 
                      displayName: selectedUser.displayName,
-                     isAdmin: selectedUser.isAdmin 
+                     isAdmin: selectedUser.isAdmin,
+                     transactions: selectedUser.transactions
                    });
                    setIsEditingUser(false);
                 }}
