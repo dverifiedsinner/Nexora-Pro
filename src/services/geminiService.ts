@@ -27,7 +27,7 @@ export const generateCourseContent = async (courseTitle: string): Promise<Genera
     const ai = getAI();
     
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", // Using 1.5-flash for broader stability as 3-flash-preview might be region-locked or unstable in current env
+      model: "gemini-3-flash-preview", // Switched from 1.5-flash (prohibited) to 3-flash-preview (recommended)
       contents: `Generate a comprehensive educational article and a 5-question quiz for a course titled: "${courseTitle}". The article should be high-quality, engaging, and at least 600 words long. The quiz must have 4 options per question and one correct answer index (0-3).`,
       config: {
         responseMimeType: "application/json",
@@ -64,7 +64,10 @@ export const generateCourseContent = async (courseTitle: string): Promise<Genera
     }
 
     console.log("AI: Successfully generated curriculum for", courseTitle);
-    return JSON.parse(response.text) as GeneratedCourse;
+    
+    // Clean potential markdown formatting if present
+    const cleanJson = response.text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    return JSON.parse(cleanJson) as GeneratedCourse;
   } catch (error) {
     console.error("Gemini Critical Error:", error);
     if (error instanceof Error) {

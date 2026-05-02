@@ -98,6 +98,18 @@ export default function Admin() {
         if (tasksData && tasksData.length > 0) {
           setTasks(tasksData);
         }
+
+        // Fetch Courses
+        const { data: coursesData } = await supabase.from('courses').select('*').order('createdAt', { ascending: false });
+        if (coursesData && coursesData.length > 0) {
+          setCourseList(coursesData);
+        } else {
+          setCourseList([
+            { id: '1', title: 'Digital Marketing Mastery', price: 5000, roi: '5X', enrolled: 120, status: 'Active' },
+            { id: '2', title: 'Crypto Trading Alpha', price: 12000, roi: '5X', enrolled: 85, status: 'Active' },
+            { id: '3', title: 'UI Design Lab', price: 7000, roi: '5X', enrolled: 45, status: 'Standby' },
+          ]);
+        }
       } catch (err) {
         console.error('Admin: Critical fetch error:', err);
       }
@@ -167,7 +179,8 @@ export default function Admin() {
       alert('AI-Generated Course deployed to network.');
     } catch (err) {
       console.error(err);
-      alert('AI Generation failed. Please try a different title or check network.');
+      const msg = err instanceof Error ? err.message : 'Unknown network error';
+      alert(`AI Generation failed: ${msg}. Please try a different title or check your neural connection.`);
     } finally {
       setIsGeneratingCourse(false);
     }
