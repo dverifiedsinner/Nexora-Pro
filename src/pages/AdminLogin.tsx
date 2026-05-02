@@ -5,8 +5,18 @@ import { Terminal, ShieldCheck, Zap, Lock, ArrowRight, AlertTriangle } from 'luc
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminLogin() {
-  const { signIn, userData } = useAuth();
+  const { user, signIn, userData } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (userData?.isAdmin || user?.email === 'denacchy@gmail.com') {
+      const timer = setTimeout(() => {
+        navigate('/admin');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [userData, user, navigate]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

@@ -213,6 +213,66 @@ export default function Admin() {
     }
   };
 
+  const rejectRecharge = async (recharge: any) => {
+    if (!confirm("Reject this inflow request?")) return;
+    try {
+      const user = users.find(u => u.uid === recharge.userId);
+      if (!user) return;
+
+      const updatedTransactions = user.transactions.map((t: any) => {
+        if (t.time === recharge.time && t.type === 'recharge') {
+          return { ...t, status: 'REJECTED' };
+        }
+        return t;
+      });
+
+      const { error } = await supabase.from('profiles').update({ 
+        transactions: updatedTransactions
+      }).eq('uid', user.uid);
+      
+      if (error) throw error;
+      
+      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions } : u));
+      setRecharges(prev => prev.filter(r => r.time !== recharge.time));
+      alert('Inflow request rejected.');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const rejectWithdrawal = async (withdrawal: any) => {
+    if (!confirm("Deny this vault authorization? Funds will be returned to user balance.")) return;
+    try {
+      const user = users.find(u => u.uid === withdrawal.userId);
+      if (!user) return;
+
+      const updatedTransactions = user.transactions.map((t: any) => {
+        if (t.time === withdrawal.time && t.type === 'withdrawal') {
+          return { ...t, status: 'DENIED' };
+        }
+        return t;
+      });
+
+      const newBalances = {
+        ...user.balances,
+        main: (user.balances.main || 0) + Math.abs(withdrawal.amount)
+      };
+
+      const { error } = await supabase.from('profiles').update({ 
+        transactions: updatedTransactions,
+        balances: newBalances
+      }).eq('uid', user.uid);
+      
+      if (error) throw error;
+      
+      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions, balances: newBalances } : u));
+      setWithdrawals(prev => prev.filter(w => w.time !== withdrawal.time));
+      alert('Withdrawal denied and funds restored to user.');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-12">
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8 relative overflow-hidden bg-white/[0.02] p-8 md:p-12 rounded-[2.5rem] border border-white/5 shadow-2xl">
@@ -239,7 +299,7 @@ export default function Admin() {
         <div className="absolute -top-10 -right-20 w-80 h-80 bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none"></div>
       </header>
 
-      <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-hide relative">
         {[
           { id: 'users', label: 'Network' },
           { id: 'recharges', label: 'Inflow' },
@@ -250,10 +310,17 @@ export default function Admin() {
           <button 
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-              activeTab === tab.id ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20' : 'text-white/20 hover:text-white/60'
+            className={`relative px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap z-10 ${
+              activeTab === tab.id ? 'text-white' : 'text-white/20 hover:text-white/60'
             }`}
           >
+            {activeTab === tab.id && (
+              <motion.div 
+                layoutId="active-tab-bg"
+                className="absolute inset-0 bg-cyan-500 rounded-xl shadow-xl shadow-cyan-500/20 -z-10"
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              />
+            )}
             {tab.label}
           </button>
         ))}
@@ -512,6 +579,12 @@ export default function Admin() {
                             >
                               Verify & credit
                             </button>
+                            <button 
+                              onClick={() => rejectRecharge(r)}
+                              className="px-4 py-2 bg-pink-500/10 text-pink-500 border border-pink-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-pink-500 hover:text-white transition-all"
+                            >
+                              Reject
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -559,12 +632,18 @@ export default function Admin() {
                           {new Date(w.time).toLocaleString()}
                         </td>
                         <td className="px-8 py-6">
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-3">
                             <button 
                               onClick={() => approveWithdrawal(w)}
                               className="btn-primary py-2 px-4 text-[9px] font-black uppercase tracking-widest"
                             >
                               Verify Disbursement
+                            </button>
+                            <button 
+                              onClick={() => rejectWithdrawal(w)}
+                              className="px-4 py-2 bg-pink-500/10 text-pink-500 border border-pink-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-pink-500 hover:text-white transition-all"
+                            >
+                              Deny
                             </button>
                           </div>
                         </td>
@@ -608,22 +687,9 @@ export default function Admin() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Protocol Authority</label>
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-sm font-bold text-white">Admin Privileges</span>
-                  <button 
-                    onClick={() => handleUpdateUser(selectedUser.uid, { isAdmin: !selectedUser.isAdmin })}
-                    className={`w-12 h-7 rounded-full p-1 transition-all ${selectedUser.isAdmin ? 'bg-cyan-500' : 'bg-white/10'}`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${selectedUser.isAdmin ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Main Vault Balance</label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Main Vault</label>
                 <div className="relative group">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">₦</span>
                   <input 
@@ -631,17 +697,94 @@ export default function Admin() {
                     value={selectedUser.balances?.main || 0}
                     onChange={(e) => {
                       const newBalances = { ...selectedUser.balances, main: Number(e.target.value) };
-                      handleUpdateUser(selectedUser.uid, { balances: newBalances });
+                      setSelectedUser({ ...selectedUser, balances: newBalances });
                     }}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-10 pr-6 text-xl font-display font-black text-white focus:outline-none focus:border-cyan-500/40"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm font-display font-black text-white focus:outline-none focus:border-cyan-500/40"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Bonus Vault</label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">₦</span>
+                  <input 
+                    type="number"
+                    value={selectedUser.balances?.bonus || 0}
+                    onChange={(e) => {
+                      const newBalances = { ...selectedUser.balances, bonus: Number(e.target.value) };
+                      setSelectedUser({ ...selectedUser, balances: newBalances });
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm font-display font-black text-white focus:outline-none focus:border-cyan-500/40"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Referral Vault</label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">₦</span>
+                  <input 
+                    type="number"
+                    value={selectedUser.balances?.referral || 0}
+                    onChange={(e) => {
+                      const newBalances = { ...selectedUser.balances, referral: Number(e.target.value) };
+                      setSelectedUser({ ...selectedUser, balances: newBalances });
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm font-display font-black text-white focus:outline-none focus:border-cyan-500/40"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Course Vault</label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">₦</span>
+                  <input 
+                    type="number"
+                    value={selectedUser.balances?.investment || 0}
+                    onChange={(e) => {
+                      const newBalances = { ...selectedUser.balances, investment: Number(e.target.value) };
+                      setSelectedUser({ ...selectedUser, balances: newBalances });
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm font-display font-black text-white focus:outline-none focus:border-cyan-500/40"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">Identify & Access</label>
+              <div className="space-y-3">
+                <input 
+                  type="text"
+                  value={selectedUser.displayName || ''}
+                  onChange={(e) => setSelectedUser({ ...selectedUser, displayName: e.target.value })}
+                  placeholder="Display Name"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm font-bold text-white focus:outline-none focus:border-cyan-500/40"
+                />
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <span className="text-xs font-bold text-white">Promote to Admin</span>
+                  <button 
+                    onClick={() => setSelectedUser({ ...selectedUser, isAdmin: !selectedUser.isAdmin })}
+                    className={`w-12 h-7 rounded-full p-1 transition-all ${selectedUser.isAdmin ? 'bg-cyan-500' : 'bg-white/10'}`}
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${selectedUser.isAdmin ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
                 </div>
               </div>
             </div>
 
             <div className="pt-6 border-t border-white/5">
               <button 
-                onClick={() => setIsEditingUser(false)}
+                onClick={() => {
+                   handleUpdateUser(selectedUser.uid, { 
+                     balances: selectedUser.balances, 
+                     displayName: selectedUser.displayName,
+                     isAdmin: selectedUser.isAdmin 
+                   });
+                   setIsEditingUser(false);
+                }}
                 className="w-full btn-primary py-5 text-[10px] font-black uppercase tracking-[0.4em]"
               >
                 Sync with Network

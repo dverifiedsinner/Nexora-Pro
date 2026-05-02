@@ -19,7 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ActivityPopups from './ActivityPopups';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { userData, signOut } = useAuth();
+  const { user, userData, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -34,8 +34,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Profile', icon: UserCircle, path: '/profile' },
   ];
 
-  if (userData?.isAdmin || userData?.email === 'denacchy@gmail.com') {
-    navItems.push({ name: 'Admin', icon: ShieldAlert, path: '/admin' });
+  if (userData?.isAdmin || user?.email === 'denacchy@gmail.com') {
+    navItems.push({ name: 'Command Center', icon: ShieldAlert, path: '/admin' });
   }
 
   const handleSignOut = async () => {

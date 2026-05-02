@@ -69,7 +69,7 @@ export default function Dashboard() {
           <p className="text-white/40 text-[9px] md:text-sm font-light italic uppercase tracking-widest">Your digital empire is ready for expansion.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 md:gap-4 z-10">
-          {userData?.isAdmin && (
+          {(userData?.isAdmin || userData?.email === 'denacchy@gmail.com') && (
             <Link to="/admin" className="btn-outline flex items-center justify-center gap-3 py-3 px-6 md:py-3.5 md:px-8 active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 shadow-emerald-500/10 shadow-lg whitespace-nowrap">
               Command Center
             </Link>
