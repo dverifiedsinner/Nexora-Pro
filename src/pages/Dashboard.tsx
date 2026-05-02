@@ -11,13 +11,14 @@ import {
   ChevronRight,
   Clock,
   Star,
-  BookOpen
+  BookOpen,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { userData } = useAuth();
+  const { userData, signOut } = useAuth();
 
   const balanceCards = [
     { 
@@ -61,25 +62,27 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8 pb-12">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative">
-        <div className="z-10">
-          <h2 className="text-4xl font-display font-black tracking-tight leading-none mb-2 text-gradient">Welcome, {userData?.displayName?.split(' ')[0]} 👋</h2>
-          <p className="text-white/40 text-sm font-light italic">Your digital empire is ready for expansion.</p>
+    <div className="space-y-8 pb-12 overflow-x-hidden">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 relative px-2">
+        <div className="z-10 text-center md:text-left">
+          <h2 className="text-2xl md:text-4xl font-display font-black tracking-tight leading-tight mb-2 text-gradient">Welcome, {userData?.displayName?.split(' ')[0]} 👋</h2>
+          <p className="text-white/40 text-[9px] md:text-sm font-light italic uppercase tracking-widest">Your digital empire is ready for expansion.</p>
         </div>
-        <div className="flex gap-4 z-10">
+        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 z-10">
           {userData?.isAdmin && (
-            <Link to="/admin" className="btn-outline flex items-center gap-3 py-3.5 px-8 active:scale-95 transition-all text-xs font-black uppercase tracking-widest border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 shadow-emerald-500/10 shadow-lg">
+            <Link to="/admin" className="btn-outline flex items-center justify-center gap-3 py-3 px-6 md:py-3.5 md:px-8 active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 shadow-emerald-500/10 shadow-lg whitespace-nowrap">
               Command Center
             </Link>
           )}
-          <Link to="/wallet" className="btn-primary flex items-center gap-3 py-3.5 px-8 shadow-cyan-500/20 active:scale-95 transition-all group">
-            <Zap size={20} className="group-hover:fill-white transition-all" /> 
-            <span className="text-xs font-black uppercase tracking-widest">Recharge Node</span>
-          </Link>
-          <Link to="/wallet" className="btn-outline flex items-center gap-3 py-3.5 px-8 active:scale-95 transition-all text-xs font-black uppercase tracking-widest">
-            Withdraw
-          </Link>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Link to="/wallet" className="flex-1 sm:flex-none btn-primary flex items-center justify-center gap-3 py-3 px-6 md:py-3.5 md:px-8 shadow-cyan-500/20 active:scale-95 transition-all group">
+              <Zap size={16} className="md:w-5 md:h-5 group-hover:fill-white transition-all" /> 
+              <span className="text-[10px] font-black uppercase tracking-widest">Recharge</span>
+            </Link>
+            <Link to="/wallet" className="flex-1 sm:flex-none btn-outline flex items-center justify-center gap-3 py-3 px-6 md:py-3.5 md:px-8 active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest">
+              Withdraw
+            </Link>
+          </div>
         </div>
         
         {/* Background Accent */}
@@ -87,19 +90,19 @@ export default function Dashboard() {
       </header>
 
       {/* Feature Banner */}
-      <section className="relative overflow-hidden glass-card p-1 rounded-[2.5rem] border-white/5 shadow-2xl">
-        <div className="bg-gradient-to-br from-cyan-600/20 via-blue-900/40 to-black rounded-[2.4rem] p-10 md:p-16 flex flex-col md:flex-row items-center gap-12 relative overflow-hidden">
-          <div className="flex-1 space-y-6 relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] text-cyan-300 border border-white/5">
+      <section className="relative overflow-hidden glass-card p-0.5 md:p-1 rounded-[1.5rem] md:rounded-[2.5rem] border-white/5 shadow-2xl">
+        <div className="bg-gradient-to-br from-cyan-600/20 via-blue-900/40 to-black rounded-[1.4rem] md:rounded-[2.4rem] p-6 sm:p-10 md:p-16 flex flex-col md:flex-row items-center gap-8 md:gap-12 relative overflow-hidden">
+          <div className="flex-1 space-y-4 md:space-y-6 relative z-10 text-center md:text-left items-center md:items-start flex flex-col">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-cyan-300 border border-white/5">
               <Star size={10} className="fill-cyan-300" /> Featured Asset
             </div>
-            <h3 className="text-4xl md:text-6xl font-display font-black leading-[0.9] tracking-tighter uppercase italic">
+            <h3 className="text-3xl sm:text-4xl md:text-6xl font-display font-black leading-[0.9] tracking-tighter uppercase italic">
               Quantum <br /> <span className="text-cyan-400">Yield</span> Pro.
             </h3>
-            <p className="text-white/50 text-base font-light italic max-w-sm">
+            <p className="text-white/50 text-xs md:text-base font-light italic max-w-sm">
               Stake your bonus wallet and earn up to 5X rewards on exclusive early-access courses.
             </p>
-            <Link to="/courses" className="btn-primary inline-flex py-4 px-10 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20">
+            <Link to="/courses" className="btn-primary inline-flex py-3 px-8 md:py-4 md:px-10 text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20">
               Upgrade Now
             </Link>
           </div>
@@ -128,31 +131,56 @@ export default function Dashboard() {
       </section>
 
       {/* Balance Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 perspective-1000">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 perspective-1000 px-2 lg:px-0">
         {balanceCards.map((card, i) => (
           <motion.div 
             key={card.name}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className={`glass-card p-6 flex flex-col justify-between group rotate-3d animate-float shadow-2xl hover:shadow-cyan-500/10 cursor-default bg-gradient-to-br from-white/[0.03] to-transparent border-white/5`}
+            className={`glass-card p-4 md:p-6 flex flex-col justify-between group rotate-3d animate-float shadow-xl md:shadow-2xl hover:shadow-cyan-500/10 cursor-default bg-gradient-to-br from-white/[0.03] to-transparent border-white/5`}
             style={{ animationDelay: `${i * 0.5}s` }}
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-2xl bg-gradient-to-br ${card.color} shadow-lg shadow-cyan-500/20 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                <card.icon size={20} className="text-white" />
+            <div className="flex justify-between items-start mb-3 md:mb-4">
+              <div className={`p-2 md:p-3 rounded-lg md:rounded-2xl bg-gradient-to-br ${card.color} shadow-lg shadow-cyan-500/20 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
+                <card.icon size={16} className="text-white md:w-5 md:h-5" />
               </div>
-              <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-black bg-white/5 px-3 py-1 rounded-full border border-white/5">{card.name}</span>
+              <span className="text-[7px] md:text-[9px] uppercase tracking-[0.1em] md:tracking-[0.2em] text-white/30 font-black bg-white/5 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-white/5">{card.name}</span>
             </div>
-            <div>
-              <p className="text-[10px] text-white/30 mb-1 font-black uppercase tracking-widest leading-none mb-2">{card.desc}</p>
-              <h2 className="text-3xl font-display font-black tracking-tighter group-hover:text-cyan-400 transition-colors">
+            <div className="overflow-hidden">
+              <p className="text-[8px] md:text-[10px] text-white/30 mb-1 font-black uppercase tracking-widest leading-none truncate">{card.desc}</p>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black tracking-tighter group-hover:text-cyan-400 transition-colors">
                 ₦{card.amount.toLocaleString()}
               </h2>
             </div>
           </motion.div>
         ))}
       </div>
+
+      {/* Logout & Safety Section */}
+      <section className="px-2 lg:px-0 mt-8">
+        <div className="glass-card p-8 md:p-12 border-white/5 bg-gradient-to-br from-white/[0.01] to-transparent flex flex-col md:flex-row items-center justify-between gap-8 group relative overflow-hidden">
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-16 h-16 rounded-[2rem] bg-pink-500/10 border border-pink-500/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl shadow-pink-500/5">
+              <LogOut size={32} className="text-pink-500" />
+            </div>
+            <div>
+              <h3 className="text-xl md:text-2xl font-display font-black uppercase italic tracking-tighter text-white">Secure Logout.</h3>
+              <p className="text-xs md:text-sm text-white/30 font-light italic mt-1 leading-relaxed max-w-sm">
+                Disconnect your current session from the neural node. Always log out when using public terminals.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => signOut()}
+            className="relative z-10 btn-outline border-white/10 text-white/40 hover:text-pink-500 hover:border-pink-500/30 px-10 py-4 text-[10px] uppercase font-black tracking-[0.3em] transition-all active:scale-95 whitespace-nowrap bg-white/[0.02]"
+          >
+            Terminate Session
+          </button>
+          
+          <div className="absolute top-1/2 left-0 -translate-y-1/2 w-48 h-48 bg-pink-500/5 blur-[80px] rounded-full pointer-events-none"></div>
+        </div>
+      </section>
 
       {/* Featured Courses Carousel */}
       <section className="space-y-6">

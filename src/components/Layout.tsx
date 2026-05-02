@@ -44,15 +44,20 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#080a0f] text-white selection:bg-cyan-500/30">
       {/* Mobile Nav */}
-      <div className="md:hidden glass sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
-        <Link to="/dashboard" className="flex items-center gap-2">
-          <Zap className="text-cyan-500 fill-cyan-500" />
-          <span className="font-display font-bold text-xl tracking-tight">NEXORA</span>
+      <div className="md:hidden sticky top-0 z-50 px-6 py-4 flex justify-between items-center bg-[#080a0f]/80 backdrop-blur-xl border-b border-white/5">
+        <Link to="/dashboard" className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <Zap className="w-5 h-5 text-white fill-white" />
+          </div>
+          <span className="font-display font-black text-xl tracking-tighter italic">NEXORA.</span>
         </Link>
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          {isMenuOpen ? <X /> : <Menu />}
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-cyan-400 active:scale-95 transition-all"
+        >
+          {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
 
@@ -60,30 +65,35 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <motion.aside 
         initial={false}
         animate={{ x: isMenuOpen ? 0 : -300 }}
-        className={`fixed md:relative md:translate-x-0 z-40 w-64 h-full bg-white/5 backdrop-blur-2xl border-r border-white/10 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        className={`fixed md:relative top-0 left-0 z-40 w-72 h-[100dvh] md:h-screen bg-[#0d1117] md:bg-white/5 backdrop-blur-3xl border-r border-white/5 flex flex-col p-8 md:p-10 transition-transform duration-300 ease-in-out md:translate-x-0 ${isMenuOpen ? 'translate-x-0 shadow-[0_0_100px_rgba(0,0,0,0.8)]' : '-translate-x-full md:translate-x-0'}`}
       >
-        <div className="hidden md:flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <Zap className="w-6 h-6 text-white fill-white" />
+        <div className="hidden md:flex items-center gap-4 mb-16 px-2">
+          <div className="w-12 h-12 rounded-[1.25rem] bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center shadow-2xl shadow-cyan-500/30">
+            <Zap className="w-7 h-7 text-white fill-white" />
           </div>
-          <span className="font-display font-bold text-2xl tracking-tighter">NEXORA</span>
+          <span className="font-display font-black text-3xl tracking-tighter italic">NEXORA.</span>
         </div>
 
-        <nav className="flex-1 space-y-3">
+        <nav className="flex-1 space-y-2 md:space-y-4">
           {navItems.map((item) => (
             <Link 
               key={item.name}
               to={item.path}
               onClick={() => setIsMenuOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              className={`flex items-center gap-4 px-5 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all group relative ${
                 location.pathname === item.path 
-                  ? 'nav-link-active' 
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
+                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' 
+                  : 'text-white/30 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              {location.pathname === item.path && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>}
-              <item.icon size={18} className={location.pathname === item.path ? 'text-cyan-400' : ''} />
-              <span className="font-medium">{item.name}</span>
+              <item.icon size={18} className={`transition-all ${location.pathname === item.path ? 'text-cyan-400' : 'group-hover:scale-110'}`} />
+              <span className="font-black text-[10px] md:text-xs uppercase tracking-widest leading-none">{item.name}</span>
+              {location.pathname === item.path && (
+                <motion.div 
+                  layoutId="active-nav"
+                  className="absolute left-0 w-1 h-6 bg-cyan-400 rounded-r-full"
+                />
+              )}
             </Link>
           ))}
         </nav>

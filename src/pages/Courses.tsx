@@ -16,7 +16,7 @@ export default function Courses() {
       id: 'c1', 
       title: 'Digital Marketing Mastery', 
       price: 2500, 
-      reward: 5000, 
+      reward: 8750, 
       category: 'Marketing', 
       lessons: 12, 
       duration: '4h 30m',
@@ -35,7 +35,7 @@ export default function Courses() {
       id: 'c2', 
       title: 'Crypto Trading Alpha', 
       price: 5000, 
-      reward: 12000, 
+      reward: 17500, 
       category: 'Finance', 
       lessons: 18, 
       duration: '6h 15m',
@@ -54,7 +54,7 @@ export default function Courses() {
       id: 'c3', 
       title: 'UI Design Lab', 
       price: 3000, 
-      reward: 7000, 
+      reward: 10500, 
       category: 'Design', 
       lessons: 10, 
       duration: '3h 45m',
@@ -71,10 +71,11 @@ export default function Courses() {
     }
   ];
 
-  const handleEnroll = async (course: any) => {
+  const handleEnroll = async (course: any, walletType: 'main' | 'bonus' = 'main') => {
     if (!userData) return;
-    if (userData.balances.main < course.price) {
-      alert("Insufficient funds in Main Wallet. Please fund your node.");
+    
+    if ((userData.balances as any)[walletType] < course.price) {
+      alert(`Insufficient funds in ${walletType} Wallet. Please fund your node.`);
       return;
     }
 
@@ -82,7 +83,7 @@ export default function Courses() {
     try {
       const newBalances = {
         ...userData.balances,
-        main: Number(userData.balances.main) - course.price
+        [walletType]: Number((userData.balances as any)[walletType]) - course.price
       };
       
       const enrolledCourses = Array.isArray((userData as any).enrolledCourses) 
@@ -98,6 +99,20 @@ export default function Courses() {
         .eq('uid', userData.uid);
 
       if (error) throw error;
+      
+      // Log transaction
+      const newTransaction = {
+        type: 'course_purchase',
+        title: `COURSE ACCESS: ${course.title}`,
+        amount: -course.price,
+        time: new Date().toISOString(),
+        status: 'SETTLED',
+        wallet: walletType
+      };
+
+      await supabase.from('profiles').update({
+        transactions: [...(userData.transactions || []), newTransaction]
+      }).eq('uid', userData.uid);
 
       // Handle Referral Commission (25%)
       if (userData.referredBy) {
@@ -256,13 +271,22 @@ export default function Courses() {
                     Initiate Audit <ArrowRight size={18} />
                   </button>
                 ) : (
-                  <button 
-                    disabled={isEnrolling}
-                    onClick={() => handleEnroll(course)}
-                    className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    {isEnrolling ? 'Configuring Node...' : 'Secure Access'}
-                  </button>
+                  <div className="space-y-4">
+                    <button 
+                      disabled={isEnrolling}
+                      onClick={() => handleEnroll(course, 'main')}
+                      className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isEnrolling ? 'Configuring Node...' : 'Secure Access (Main)'}
+                    </button>
+                    <button 
+                      disabled={isEnrolling}
+                      onClick={() => handleEnroll(course, 'bonus')}
+                      className="w-full btn-outline py-5 uppercase font-black tracking-[0.2em] text-xs active:scale-95 transition-all text-white/40 border-white/5 hover:border-cyan-500/30 hover:text-white"
+                    >
+                      Redeem Bonus Yield
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

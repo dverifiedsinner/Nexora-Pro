@@ -14,6 +14,7 @@ import Referrals from './pages/Referrals';
 import Games from './pages/Games';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import AdminLogin from './pages/AdminLogin';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode, adminOnly?: boolean }> = ({ children, adminOnly }) => {
   const { user, userData, loading } = useAuth();
@@ -24,7 +25,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode, adminOnly?: boolean 
     </div>
   );
   
-  if (!user) return <Navigate to="/auth" />;
+  if (!user) {
+    return adminOnly ? <Navigate to="/admin-portal" /> : <Navigate to="/auth" />;
+  }
   
   if (adminOnly && !userData?.isAdmin) return <Navigate to="/dashboard" />;
   
@@ -47,6 +50,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/admin-portal" element={<AdminLogin />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
           <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
@@ -9,12 +10,15 @@ import {
   Plus, 
   Trash2, 
   Search,
-  ArrowUpRight
+  ArrowUpRight,
+  ShieldCheck
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Admin() {
+  const { signOut } = useAuth();
   const [activeTab, setActiveTab] = React.useState<'users' | 'withdrawals' | 'recharges' | 'courses' | 'system'>('users');
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [users, setUsers] = React.useState<any[]>([]);
@@ -60,7 +64,7 @@ export default function Admin() {
                 if (t.type === 'withdrawal' && t.status === 'SETTLED') {
                    allWithdrawals.push(commonData);
                 }
-                if (t.type === 'recharge' && t.status === 'PENDING') {
+                if (t.type === 'recharge' && (t.status === 'PENDING' || t.status === 'PENDING_VERIFICATION')) {
                    allRecharges.push(commonData);
                 }
               });
@@ -211,31 +215,49 @@ export default function Admin() {
 
   return (
     <div className="space-y-8 pb-12">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-        <div>
-          <h1 className="text-3xl font-display font-black tracking-tight text-gradient">NEXORA COMMAND.</h1>
-          <p className="text-white/30 font-light italic text-xs uppercase tracking-[0.2em] mt-1">Core System Authority</p>
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8 relative overflow-hidden bg-white/[0.02] p-8 md:p-12 rounded-[2.5rem] border border-white/5 shadow-2xl">
+        <div className="text-center lg:text-left z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-500/10 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-cyan-400 border border-cyan-500/20 mb-4">
+            <ShieldCheck size={10} className="fill-cyan-400" /> Root Access Granted
+          </div>
+          <h1 className="text-4xl md:text-5xl font-display font-black tracking-tight text-gradient leading-none uppercase italic">COMMAND CENTRE.</h1>
+          <p className="text-white/30 font-light italic text-[10px] uppercase tracking-[0.3em] mt-2">NEXORA INTEL CORE 4.0 // SECURE PROTOCOL</p>
         </div>
-        <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto">
-          {[
-            { id: 'users', label: 'Network' },
-            { id: 'recharges', label: 'Inflow' },
-            { id: 'withdrawals', label: 'Vaults' },
-            { id: 'courses', label: 'Curriculum' },
-            { id: 'system', label: 'System' },
-          ].map((tab) => (
-            <button 
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                activeTab === tab.id ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20' : 'text-white/20 hover:text-white/60'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        
+        <div className="flex flex-col sm:flex-row gap-4 items-center z-10">
+          <Link to="/dashboard" className="w-full sm:w-auto btn-outline flex items-center justify-center gap-3 py-3 px-8 text-[10px] font-black uppercase tracking-widest border-white/10 hover:border-cyan-500/30">
+            Exit to Planet
+          </Link>
+          <button 
+            onClick={() => signOut()}
+            className="w-full sm:w-auto btn-primary bg-pink-600 hover:bg-pink-500 shadow-pink-500/20 flex items-center justify-center gap-3 py-3 px-8 text-[10px] font-black uppercase tracking-widest"
+          >
+            Terminal Shutdown
+          </button>
         </div>
+
+        <div className="absolute -top-10 -right-20 w-80 h-80 bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none"></div>
       </header>
+
+      <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-hide">
+        {[
+          { id: 'users', label: 'Network' },
+          { id: 'recharges', label: 'Inflow' },
+          { id: 'withdrawals', label: 'Vaults' },
+          { id: 'courses', label: 'Curriculum' },
+          { id: 'system', label: 'System' },
+        ].map((tab) => (
+          <button 
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+              activeTab === tab.id ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20' : 'text-white/20 hover:text-white/60'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
@@ -261,64 +283,64 @@ export default function Admin() {
       </div>
 
       <section className="glass-card overflow-hidden border-white/5 shadow-2xl">
-        <div className="p-8 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 bg-white/[0.02]">
+        <div className="p-6 md:p-8 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 bg-white/[0.02]">
           <div className="relative w-full max-w-md">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400" size={16} />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 md:w-4 md:h-4" size={14} />
             <input 
               type="text" 
               placeholder={`Query ${activeTab} registry...`} 
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-sm font-medium focus:outline-none focus:border-cyan-500/40 focus:bg-white/[0.08] transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-2.5 md:py-3 pl-12 pr-6 text-[10px] md:text-sm font-medium focus:outline-none focus:border-cyan-500/40 focus:bg-white/[0.08] transition-all"
             />
           </div>
           {activeTab === 'courses' && (
             <button 
               onClick={createCourse}
-              className="btn-primary py-3 px-8 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 shadow-cyan-500/20 active:scale-95 transition-all"
+              className="w-full md:w-auto btn-primary py-2.5 md:py-3 px-6 md:px-8 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 md:gap-3 shadow-cyan-500/20 active:scale-95 transition-all"
             >
-              <Plus size={18} /> New Curriculum
+              <Plus size={16} className="md:w-[18px] md:h-[18px]" /> New Curriculum
             </button>
           )}
         </div>
 
         <div className="overflow-x-auto">
           {activeTab === 'users' && (
-            <table className="w-full text-left border-collapse animate-in fade-in duration-500">
+            <table className="w-full text-left border-collapse animate-in fade-in duration-500 min-w-[600px]">
               <thead>
-                <tr className="bg-white/[0.02] text-white/30 font-black text-[10px] uppercase tracking-[0.2em]">
-                  <th className="px-8 py-6">Operator Identity</th>
-                  <th className="px-8 py-6 text-center">Protocol Status</th>
-                  <th className="px-8 py-6 text-center">Vault Balance</th>
-                  <th className="px-8 py-6 text-right">Execution</th>
+                <tr className="bg-white/[0.02] text-white/30 font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em]">
+                  <th className="px-6 md:px-8 py-5 md:py-6">Operator Identity</th>
+                  <th className="px-6 md:px-8 py-5 md:py-6 text-center">Protocol Status</th>
+                  <th className="px-6 md:px-8 py-5 md:py-6 text-center">Vault Balance</th>
+                  <th className="px-6 md:px-8 py-5 md:py-6 text-right">Execution</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.02] text-xs">
+              <tbody className="divide-y divide-white/[0.02] text-[10px] md:text-xs">
                 {users.map((u, i) => (
                   <tr key={i} className="hover:bg-white/[0.01] transition-all group">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center font-black text-[10px] border border-white/5 group-hover:border-cyan-500/20 group-hover:text-cyan-400 transition-all">
+                    <td className="px-6 md:px-8 py-4 md:py-6">
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-white/5 flex items-center justify-center font-black text-[9px] md:text-[10px] border border-white/5 group-hover:border-cyan-500/20 group-hover:text-cyan-400 transition-all">
                           {(u.displayName || 'UX').substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-bold text-white/90 group-hover:text-white transition-colors">{u.displayName || 'New User'}</p>
-                          <p className="text-[10px] text-white/30 font-medium tracking-tight italic">{u.email}</p>
+                          <p className="font-bold text-white/90 group-hover:text-white transition-colors text-[11px] md:text-sm">{u.displayName || 'New User'}</p>
+                          <p className="text-[9px] md:text-[10px] text-white/30 font-medium tracking-tight italic">{u.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 text-center">
-                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400">Active</span>
+                    <td className="px-6 md:px-8 py-4 md:py-6 text-center">
+                      <span className="px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400">Active</span>
                     </td>
-                    <td className="px-8 py-6 text-center font-display font-black text-white/80">₦{Number(u.balances?.main || 0).toLocaleString()}</td>
-                    <td className="px-8 py-6">
-                      <div className="flex justify-end gap-3 px-1">
+                    <td className="px-6 md:px-8 py-4 md:py-6 text-center font-display font-black text-white/80 text-xs md:text-sm">₦{Number(u.balances?.main || 0).toLocaleString()}</td>
+                    <td className="px-6 md:px-8 py-4 md:py-6">
+                      <div className="flex justify-end gap-2 md:gap-3 px-1">
                         <button 
                           onClick={() => { setSelectedUser(u); setIsEditingUser(true); }}
-                          className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-cyan-500/40 hover:text-cyan-400 transition-all shadow-xl"
+                          className="p-2.5 md:p-3 bg-white/5 rounded-xl md:rounded-2xl border border-white/5 hover:border-cyan-500/40 hover:text-cyan-400 transition-all"
                         >
-                          <Settings size={14} />
+                          <Settings size={12} className="md:w-3.5 md:h-3.5" />
                         </button>
-                        <button className="p-3 bg-pink-500/5 text-pink-500 rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all shadow-xl">
-                          <Trash2 size={14} />
+                        <button className="p-2.5 md:p-3 bg-pink-500/5 text-pink-500 rounded-xl md:rounded-2xl border border-pink-500/10 hover:bg-pink-500 hover:text-white transition-all">
+                          <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -472,7 +494,18 @@ export default function Admin() {
                           {new Date(r.time).toLocaleString()}
                         </td>
                         <td className="px-8 py-6">
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-3 items-center">
+                            {r.proof && (
+                              <button 
+                                onClick={() => {
+                                  const win = window.open();
+                                  win?.document.write(`<img src="${r.proof}" style="max-width: 100%" />`);
+                                }}
+                                className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-cyan-500/10 hover:text-cyan-400 transition-all"
+                              >
+                                View Proof
+                              </button>
+                            )}
                             <button 
                               onClick={() => approveRecharge(r)}
                               className="btn-primary py-2 px-4 text-[9px] font-black uppercase tracking-widest"

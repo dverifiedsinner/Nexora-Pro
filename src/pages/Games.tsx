@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Gamepad2, Zap, TrendingUp, Trophy, ArrowRight, Star, AlertCircle, Check, X, Clock, Wallet } from 'lucide-react';
+import { Gamepad2, Zap, TrendingUp, Trophy, ArrowRight, Star, AlertCircle, Check, X, Clock, Wallet, Award } from 'lucide-react';
 
 interface Match {
   id: string;
@@ -32,15 +32,69 @@ const generateMatches = (): Match[] => {
 
 export default function Games() {
   const { userData } = useAuth();
-  const [activeTab, setActiveTab] = useState<'prediction' | 'spin'>('prediction');
+  const [activeTab, setActiveTab] = useState<'prediction' | 'spin' | 'staking'>('prediction');
+  const [stakingAmount, setStakingAmount] = useState<string>('5000');
+  const [stakingDays, setStakingDays] = useState<number>(7);
+  const [isStaking, setIsStaking] = useState(false);
   const [matches, setMatches] = useState<Match[]>(generateMatches());
   const [selectedMatches, setSelectedMatches] = useState<{ id: string; pick: '1' | 'X' | '2' }[]>([]);
-  const [stakeAmount, setStakeAmount] = useState<string>('500');
-  const [spinStake, setSpinStake] = useState<string>('500');
+  const [stakeAmount, setStakeAmount] = useState<string>('200');
+  const [spinStake, setSpinStake] = useState<string>('200');
   const [stakingStatus, setStakingStatus] = useState<'idle' | 'processing' | 'result'>('idle');
   const [timer, setTimer] = useState(0);
   const [winResult, setWinResult] = useState<boolean | null>(null);
   const [isProcessingStaking, setIsProcessingStaking] = useState(false);
+
+  const handleQuantumStake = async () => {
+    const amount = Number(stakingAmount);
+    if (!userData || amount < 2000) {
+      alert("Minimum staking amount is ₦2,000");
+      return;
+    }
+
+    if ((userData.balances?.bonus || 0) < amount) {
+      alert("Insufficient Bonus Reservoir fuel.");
+      return;
+    }
+
+    setIsStaking(true);
+    try {
+      const newBalances = {
+        ...userData.balances,
+        bonus: Number(userData.balances.bonus) - amount
+      };
+      
+      const newTransaction = {
+        type: 'staking',
+        title: `QUANTUM STAKE (${stakingDays} DAYS)`,
+        amount: -amount,
+        time: new Date().toISOString(),
+        status: 'LOCKED'
+      };
+
+      const newStakes = Array.isArray((userData as any).activeStakes)
+        ? [...(userData as any).activeStakes, { amount, days: stakingDays, startTime: new Date().toISOString() }]
+        : [{ amount, days: stakingDays, startTime: new Date().toISOString() }];
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          balances: newBalances,
+          transactions: [...(userData.transactions || []), newTransaction],
+          activeStakes: newStakes
+        })
+        .eq('uid', userData.uid);
+
+      if (error) throw error;
+
+      alert(`₦${amount.toLocaleString()} successfully staked for ${stakingDays} days!`);
+    } catch (err) {
+      console.error(err);
+      alert("Staking protocol failed.");
+    } finally {
+      setIsStaking(false);
+    }
+  };
 
   const toggleMatch = (id: string, pick: '1' | 'X' | '2') => {
     if (stakingStatus !== 'idle') return;
@@ -57,8 +111,8 @@ export default function Games() {
 
   const handleStake = async () => {
     const amount = Number(stakeAmount);
-    if (!userData || selectedMatches.length === 0 || amount < 500) {
-      alert("Minimum stake is ₦500.");
+    if (!userData || selectedMatches.length === 0 || amount < 200) {
+      alert("Nexora Protocol: Minimum stake is ₦200.");
       return;
     }
     
@@ -109,8 +163,8 @@ export default function Games() {
 
   const toggleSpin = async () => {
     const amount = Number(spinStake);
-    if (!userData || amount < 500) {
-      alert("Minimum stake is ₦500 for high-velocity spins.");
+    if (!userData || amount < 200) {
+      alert("Nexora Protocol: Minimum stake is ₦200 for high-velocity spins.");
       return;
     }
 
@@ -227,23 +281,22 @@ export default function Games() {
           <h1 className="text-3xl font-display font-bold">Games & Predictions</h1>
           <p className="text-white/40 font-light italic">Stake your insights and unlock massive reward pools.</p>
         </div>
-        <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md">
-          <button 
-            onClick={() => setActiveTab('prediction')}
-            className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              activeTab === 'prediction' ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20' : 'text-white/20 hover:text-white/60'
-            }`}
-          >
-            Stadium Meta
-          </button>
-          <button 
-            onClick={() => setActiveTab('spin')}
-            className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              activeTab === 'spin' ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20' : 'text-white/20 hover:text-white/60'
-            }`}
-          >
-            Nitro Spin
-          </button>
+        <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-hide">
+          {[
+            { id: 'prediction', label: 'Stadium Meta' },
+            { id: 'spin', label: 'Nitro Spin' },
+            { id: 'staking', label: 'Quantum Stake' }
+          ].map((tab) => (
+            <button 
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-6 md:px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === tab.id ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20' : 'text-white/20 hover:text-white/60'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </header>
 
@@ -343,13 +396,13 @@ export default function Games() {
                        <div className="space-y-4">
                           <div className="flex justify-between items-end border-t border-white/5 pt-6">
                              <div>
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Variable Stake (₦500 MIN)</p>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Variable Stake (₦200 MIN)</p>
                                 <div className="relative">
                                    <input 
                                      type="text" 
                                      value={stakeAmount}
                                      onChange={(e) => setStakeAmount(e.target.value)}
-                                     placeholder="500"
+                                     placeholder="200"
                                      className="bg-transparent border-none text-2xl font-display font-black text-white focus:outline-none w-32"
                                    />
                                 </div>
@@ -498,7 +551,7 @@ export default function Games() {
                     Access potential yield up to <span className="text-cyan-400 font-black tracking-widest text-lg ml-1">5X YOUR STAKE!</span>
                  </p>
                  <div className="bg-white/5 border border-white/5 p-6 rounded-3xl space-y-4 shadow-xl">
-                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Nitro Variable Stake (₦500 MIN)</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Nitro Variable Stake (₦200 MIN)</p>
                     <div className="flex items-center justify-center gap-4">
                        <span className="text-2xl font-display font-black text-cyan-400 opacity-40 italic">₦</span>
                        <input 
@@ -506,7 +559,7 @@ export default function Games() {
                           value={spinStake}
                           onChange={(e) => setSpinStake(e.target.value)}
                           className="bg-transparent border-none text-4xl font-display font-black text-white focus:outline-none w-40 text-center tracking-tighter"
-                          placeholder="500"
+                          placeholder="200"
                        />
                     </div>
                  </div>
@@ -529,6 +582,114 @@ export default function Games() {
                  </div>
               </div>
            </div>
+        </div>
+      )}
+      {activeTab === 'staking' && (
+        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8">
+              <div className="space-y-6">
+                <h2 className="text-5xl md:text-6xl font-display font-black tracking-tight italic uppercase text-gradient leading-[0.9]">Quantum <br /> Pool Staking.</h2>
+                <p className="text-white/40 font-light italic leading-relaxed text-lg max-w-md">
+                  Deploy your bonus reservoir into high-yield staking nodes. Earn daily passive liquidation directly to your investment wallet.
+                </p>
+              </div>
+
+              <div className="glass-card p-10 space-y-10 bg-gradient-to-br from-white/[0.03] to-transparent border-white/5 shadow-2xl">
+                <div className="space-y-6">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Select Staking Configuration</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    {[7, 14, 30].map((days) => (
+                      <button 
+                        key={days}
+                        onClick={() => setStakingDays(days)}
+                        className={`py-4 rounded-2xl border transition-all flex flex-col items-center gap-1 ${
+                          stakingDays === days 
+                            ? 'bg-cyan-500 border-cyan-400 text-white shadow-xl shadow-cyan-500/20 scale-105' 
+                            : 'bg-white/5 border-white/5 text-white/30 hover:border-white/20'
+                        }`}
+                      >
+                        <span className="text-xl font-display font-black">{days}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Days</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Staking Amount (₦2,000 MIN)</p>
+                  <div className="bg-black/20 rounded-3xl p-6 border border-white/5 flex items-center justify-between">
+                    <input 
+                      type="text" 
+                      value={stakingAmount}
+                      onChange={(e) => setStakingAmount(e.target.value)}
+                      className="bg-transparent border-none text-4xl font-display font-black text-white focus:outline-none w-full"
+                      placeholder="5000"
+                    />
+                    <span className="text-2xl font-display font-black text-cyan-400 opacity-40 italic">₦</span>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5 space-y-8">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                    <span className="text-white/20 italic">Estimated APY</span>
+                    <span className="text-emerald-400">+{stakingDays === 7 ? '15' : stakingDays === 14 ? '35' : '85'}% Retun</span>
+                  </div>
+                  <button 
+                    onClick={handleQuantumStake}
+                    disabled={isStaking}
+                    className="w-full btn-primary py-5 text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all"
+                  >
+                    {isStaking ? 'Verifying Node...' : 'Initiate Quantum Stake'} <ArrowRight size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden lg:block relative group">
+              <div className="absolute -inset-20 bg-cyan-500/5 blur-[120px] rounded-full animate-float-slow"></div>
+              <div className="glass-card p-12 bg-gradient-to-br from-cyan-600/10 to-transparent border-white/10 relative z-10 rotate-3 animate-float transition-transform group-hover:rotate-0 duration-700">
+                <Trophy size={100} strokeWidth={0.5} className="text-cyan-400/20 mb-8 mx-auto" />
+                <h4 className="text-2xl font-display font-black text-center uppercase tracking-tighter italic mb-8">Active Nodes</h4>
+                <div className="space-y-6">
+                  {((userData as any)?.activeStakes || []).length > 0 ? (
+                    (userData as any).activeStakes.map((stake: any, idx: number) => (
+                      <div key={idx} className="p-5 bg-white/5 rounded-2xl border border-white/5 flex justify-between items-center group/item hover:bg-white/10 transition-all">
+                        <div>
+                          <p className="text-[9px] font-black text-cyan-400 uppercase tracking-widest mb-1 italic">Locked Reservoir</p>
+                          <p className="text-xl font-display font-black">₦{stake.amount.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Time Remaining</p>
+                          <p className="text-xl font-display font-black text-white/40">{stake.days} Days</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-12 text-center space-y-4">
+                       <Clock size={40} className="mx-auto text-white/10 animate-spin-slow" />
+                       <p className="text-xs text-white/20 font-black uppercase tracking-[0.2em]">No active staking nodes detected.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <section className="glass-card p-12 bg-gradient-to-r from-emerald-600/10 to-transparent border-white/5 relative overflow-hidden">
+             <div className="relative z-10 flex gap-10 items-center">
+                <div className="w-24 h-24 bg-white/5 rounded-[3rem] flex items-center justify-center shrink-0 border border-white/10 shadow-2xl">
+                  <Award size={48} className="text-emerald-400 opacity-80" />
+                </div>
+                <div className="space-y-3">
+                   <h4 className="text-2xl font-display font-bold tracking-tight text-emerald-200">Governance & Yield Protocol</h4>
+                   <p className="text-base text-white/40 font-light leading-relaxed max-w-4xl italic">
+                     Staked assets are locked in our high-frequency trading & curriculum nodes for the specified duration. Rewards are calculated daily and distributed upon cycle completion. Premature liquidation is not permitted under Nexora protocol 4.0.
+                   </p>
+                </div>
+             </div>
+             <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[500px] h-40 bg-emerald-500/5 blur-[150px]"></div>
+          </section>
         </div>
       )}
     </div>
