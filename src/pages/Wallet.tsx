@@ -38,17 +38,24 @@ export default function Wallet() {
 
   const handleRecharge = async () => {
     const amount = Number(rechargeAmount);
-    if (!userData || isNaN(amount)) {
+    if (!userData) {
+      alert("Authentication node missing. Please re-synchronize.");
+      return;
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount for recharge.");
       return;
     }
     
     if (!proofImage) {
-      alert('Please upload/capture payment proof for verification.');
+      alert('Security Protocol: Please upload or capture payment proof for identity verification.');
       return;
     }
 
     setIsProcessing(true);
     try {
+      console.log("Wallet: Porting recharge request...", { amount, proofProvided: !!proofImage });
       const newTransaction = {
         type: 'recharge',
         title: 'NODE RECHARGE',
@@ -69,10 +76,10 @@ export default function Wallet() {
 
       setRechargeAmount('');
       setProofImage(null);
-      alert(`Proof submitted for ₦${amount.toLocaleString()}. Our audit engine will verify the node synchronicity within 30 minutes.`);
+      alert(`Network success: Proof submitted for ₦${amount.toLocaleString()}. Our audit engine will verify the node synchronicity within 30 minutes.`);
     } catch (err) {
-      console.error(err);
-      alert('Recharge request failed.');
+      console.error("Wallet Error:", err);
+      alert('Recharge submission failed. Check your network link.');
     } finally {
       setIsProcessing(false);
     }
@@ -363,7 +370,7 @@ export default function Wallet() {
 
                   <button 
                     onClick={handleRecharge}
-                    disabled={isProcessing || !rechargeAmount || !proofImage}
+                    disabled={isProcessing}
                     className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isProcessing ? 'Processing Transaction...' : 'Verify Transfer & Recharge'}

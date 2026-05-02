@@ -110,17 +110,29 @@ export default function Games() {
 
   const handleStake = async () => {
     const amount = Number(stakeAmount);
-    if (!userData || selectedMatches.length === 0 || isNaN(amount)) {
+    if (!userData) {
+      alert("Authentication node missing.");
+      return;
+    }
+    
+    if (selectedMatches.length === 0) {
+      alert("Please select at least one match node to initialize simulation.");
+      return;
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount for simulation stake.");
       return;
     }
     
     if ((userData.balances?.main || 0) < amount) {
-      alert("Insufficient Main Reservoir fuel.");
+      alert(`Insufficient Main Reservoir fuel. Required: ₦${amount.toLocaleString()}`);
       return;
     }
 
     setIsProcessingStaking(true);
     try {
+      console.log("Games: Initiating meta simulation...", { amount, selections: selectedMatches.length });
       const newBalances = {
         ...userData.balances,
         main: Number(userData.balances.main) - amount
@@ -146,8 +158,8 @@ export default function Games() {
       setStakingStatus('processing');
       setTimer(30);
     } catch (err) {
-      console.error(err);
-      alert("Staking protocol failed.");
+      console.error("Games Error:", err);
+      alert("Stake Protocol Error: Connection to neural network interrupted.");
     } finally {
       setIsProcessingStaking(false);
     }
@@ -411,10 +423,10 @@ export default function Games() {
                           </div>
                           
                           <button 
-                            disabled={selectedMatches.length === 0 || isProcessingStaking || stakingStatus !== 'idle'}
+                            disabled={isProcessingStaking || stakingStatus !== 'idle'}
                             onClick={handleStake}
                             className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 transition-all ${
-                              selectedMatches.length > 0 && !isProcessingStaking && stakingStatus === 'idle'
+                              !isProcessingStaking && stakingStatus === 'idle'
                                 ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20 active:scale-95' 
                                 : 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
                             }`}
