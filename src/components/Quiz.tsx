@@ -72,7 +72,7 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
         {currentStep === 'quiz' && (
           <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
             <motion.div 
-               className="h-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+               className="h-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.5)]"
                initial={{ width: 0 }}
                animate={{ width: `${((currentQuestionIdx + 1) / questions.length) * 100}%` }}
             />
@@ -90,8 +90,8 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                 className="space-y-8"
               >
                 <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-400/10 rounded-full text-[10px] font-black uppercase tracking-widest text-cyan-400">
-                    <Zap size={12} className="fill-cyan-400" /> Assessment Active
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-400/10 rounded-full text-[10px] font-black uppercase tracking-widest text-yellow-400">
+                    <Zap size={12} className="fill-yellow-400" /> Assessment Active
                   </div>
                   <h2 className="text-4xl font-display font-black tracking-tighter uppercase italic leading-none">
                     {courseTitle} Module.
@@ -104,15 +104,15 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                 <div className="grid grid-cols-2 gap-4 pt-4">
                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
                       <p className="text-[10px] font-black uppercase text-white/20 tracking-widest mb-1">Max Yield</p>
-                      <p className="text-2xl font-display font-black text-cyan-400 italic">₦{rewardGoal.toLocaleString()}</p>
+                      <p className="text-2xl font-display font-black text-yellow-400 italic">₦{rewardGoal.toLocaleString()}</p>
                    </div>
                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
                       <p className="text-[10px] font-black uppercase text-white/20 tracking-widest mb-1">Risk Dynamic</p>
-                      <p className="text-2xl font-display font-black text-pink-500 italic">VARIABLE</p>
+                      <p className="text-2xl font-display font-black text-red-500 italic">VARIABLE</p>
                    </div>
                 </div>
 
-                <button onClick={handleNextStep} className="w-full btn-primary py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-cyan-500/20 active:scale-95 transition-all">
+                <button onClick={handleNextStep} className="w-full btn-primary py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-yellow-500/20 active:scale-95 transition-all">
                   Access Curriculum
                 </button>
               </motion.div>
@@ -142,8 +142,7 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                       </div>
                    </div>
                 </div>
-                
-                <button onClick={handleNextStep} className="w-full btn-primary py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-cyan-500/20 active:scale-95 transition-all flex items-center justify-center gap-3">
+                                <button onClick={handleNextStep} className="w-full btn-primary py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-yellow-500/20 active:scale-95 transition-all flex items-center justify-center gap-3">
                   Initiate Audit <ArrowRight size={18} />
                 </button>
               </motion.div>
@@ -163,7 +162,7 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                    </div>
                    <div className="text-right">
                       <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Live Yield</p>
-                      <p className="text-2xl font-display font-black text-cyan-400 italic">₦{Math.round(currentEarnings).toLocaleString()}</p>
+                      <p className="text-2xl font-display font-black text-yellow-400 italic">₦{Math.round(currentEarnings).toLocaleString()}</p>
                    </div>
                 </div>
 
@@ -174,13 +173,13 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                        onClick={() => setSelectedOption(idx)}
                        className={`w-full p-5 rounded-2xl text-left transition-all border flex items-center justify-between group active:scale-[0.98] ${
                          selectedOption === idx 
-                           ? 'bg-cyan-500/10 border-cyan-500/50 text-white' 
+                           ? 'bg-yellow-500/10 border-yellow-500/50 text-white' 
                            : 'bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.05] hover:border-white/10'
                        }`}
                      >
                        <span className="text-sm font-medium tracking-tight uppercase italic">{option}</span>
                        <div className={`w-5 h-5 rounded-full border-2 transition-all ${
-                         selectedOption === idx ? 'border-cyan-400 bg-cyan-400' : 'border-white/10'
+                         selectedOption === idx ? 'border-yellow-400 bg-yellow-400' : 'border-white/10'
                        }`}>
                          {selectedOption === idx && <Check size={14} className="text-[#0a0f1d] font-bold" />}
                        </div>
@@ -193,7 +192,7 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                   onClick={handleAnswerSubmit}
                   className={`w-full py-5 text-xs font-black uppercase tracking-[0.2em] transition-all rounded-2xl flex items-center justify-center gap-3 ${
                     selectedOption !== null 
-                      ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20 active:scale-95' 
+                      ? 'bg-yellow-500 text-slate-950 shadow-xl shadow-yellow-500/20 active:scale-95' 
                       : 'bg-white/5 text-white/10 cursor-not-allowed'
                   }`}
                 >
@@ -210,12 +209,12 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                 className="text-center space-y-10"
               >
                 <div className="relative inline-block">
-                   <div className="absolute inset-0 bg-cyan-500/20 blur-[100px] animate-pulse-glow rounded-full"></div>
+                   <div className="absolute inset-0 bg-yellow-500/20 blur-[100px] animate-pulse-glow rounded-full"></div>
                    <motion.div 
                      initial={{ rotate: -180, scale: 0 }}
                      animate={{ rotate: 0, scale: 1 }}
                      transition={{ type: 'spring', damping: 12, stiffness: 100 }}
-                     className="w-40 h-40 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-[2.5rem] border-4 border-white/10 flex items-center justify-center shadow-2xl relative z-10 mx-auto"
+                     className="w-40 h-40 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-[2.5rem] border-4 border-white/10 flex items-center justify-center shadow-2xl relative z-10 mx-auto"
                    >
                       <Trophy size={80} className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]" />
                    </motion.div>
@@ -232,14 +231,14 @@ export default function Quiz({ courseId, courseTitle, rewardGoal, questions, onC
                   transition={{ delay: 0.5 }}
                   className="bg-white/5 border border-white/10 p-10 rounded-[3rem] inline-block min-w-[300px]"
                 >
-                   <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.5em] mb-4">Total Earning</p>
+                   <p className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.5em] mb-4">Total Earning</p>
                    <p className="text-6xl font-display font-black tracking-tighter text-white">₦{Math.round(currentEarnings).toLocaleString()}</p>
                 </motion.div>
 
                 <div className="pt-6">
                    <button 
                      onClick={() => onComplete(currentEarnings)}
-                     className="btn-primary py-5 px-16 text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-cyan-500/40 active:scale-95 transition-all"
+                     className="btn-primary py-5 px-16 text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-yellow-500/40 active:scale-95 transition-all"
                    >
                      Claim & Exit
                    </button>

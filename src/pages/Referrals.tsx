@@ -11,22 +11,42 @@ export default function Referrals() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    
+    // Safety timeout
+    const timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        setLoading(false);
+      }
+    }, 5000);
+
     const fetchReferrals = async () => {
-      if (!userData?.uid) return;
+      if (!userData?.uid) {
+        if (mounted) setLoading(false);
+        return;
+      }
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('displayName, email, createdAt, balances')
           .eq('referredBy', userData.uid);
         
+        if (!mounted) return;
         if (data) setReferrals(data);
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          clearTimeout(timeoutId);
+        }
       }
     };
     fetchReferrals();
+    return () => { 
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [userData?.uid]);
 
   const referralLink = `${window.location.origin}?ref=${userData?.referralCode}`;
@@ -52,32 +72,32 @@ export default function Referrals() {
 
       {/* Rewards Overview */}
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="glass-card p-6 border-cyan-500/30 bg-cyan-500/5">
+        <div className="glass-card p-6 border-yellow-500/30 bg-yellow-500/5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-cyan-500 rounded-2xl shadow-lg shadow-cyan-500/20">
-              <Award size={20} className="text-white" />
+            <div className="p-3 bg-yellow-500 rounded-2xl shadow-lg shadow-yellow-500/20">
+              <Award size={20} className="text-slate-950" />
             </div>
-            <p className="text-[10px] uppercase font-black text-cyan-400 tracking-widest">Total Referrals</p>
+            <p className="text-[10px] uppercase font-black text-yellow-400 tracking-widest">Total Referrals</p>
           </div>
           <h2 className="text-4xl font-display font-bold">{referrals.length}</h2>
           <p className="text-xs text-white/30 mt-1 font-medium italic">Active network size</p>
         </div>
-        <div className="glass-card p-6 border-pink-500/30 bg-pink-500/5">
+        <div className="glass-card p-6 border-blue-500/30 bg-blue-500/5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-pink-500 rounded-2xl shadow-lg shadow-pink-500/20">
+            <div className="p-3 bg-blue-500 rounded-2xl shadow-lg shadow-blue-500/20">
               <TrendingUp size={20} className="text-white" />
             </div>
-            <p className="text-[10px] uppercase font-black text-pink-400 tracking-widest">Total Earned</p>
+            <p className="text-[10px] uppercase font-black text-blue-400 tracking-widest">Total Earned</p>
           </div>
           <h2 className="text-4xl font-display font-bold">₦{userData?.balances?.referral?.toLocaleString() || '0'}</h2>
           <p className="text-xs text-white/30 mt-1 font-medium italic">Withdrawable rewards</p>
         </div>
-        <div className="glass-card p-6 border-blue-500/30 bg-blue-500/5">
+        <div className="glass-card p-6 border-yellow-500/30 bg-yellow-500/5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-blue-500 rounded-2xl shadow-lg shadow-blue-500/20">
-              <Gift size={20} className="text-white" />
+            <div className="p-3 bg-yellow-500 rounded-2xl shadow-lg shadow-yellow-500/20">
+              <Gift size={20} className="text-slate-950" />
             </div>
-            <p className="text-[10px] uppercase font-black text-blue-400 tracking-widest">Rank Bonus</p>
+            <p className="text-[10px] uppercase font-black text-yellow-400 tracking-widest">Rank Bonus</p>
           </div>
           <h2 className="text-4xl font-display font-bold">₦2,500</h2>
           <p className="text-xs text-white/30 mt-1 font-medium italic">Next: Silver Tier ({Math.max(0, 5 - referrals.length)} left)</p>
@@ -86,22 +106,22 @@ export default function Referrals() {
 
       <div className="grid lg:grid-cols-2 gap-12 items-start">
         {/* Referral Link Card */}
-        <section className="glass-card p-8 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-900/40 via-transparent to-transparent">
+        <section className="glass-card p-8 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-yellow-900/40 via-transparent to-transparent">
           <h3 className="text-2xl font-display font-bold mb-6 italic">Secure Your Link</h3>
           <p className="text-white/40 text-sm mb-10 leading-relaxed font-light">
-            Monetize your network. Copy this link and share it on your social media platforms. For each person who registers and activates their account, you'll receive <span className="text-cyan-400 font-bold">₦500</span>.
+            Monetize your network. Copy this link and share it on your social media platforms. For each person who registers and activates their account, you'll receive <span className="text-yellow-400 font-bold">₦500</span>.
           </p>
           
           <div className="space-y-6">
             <div className="relative">
-              <div className="bg-white/5 border border-white/5 rounded-2xl py-5 px-6 pr-20 text-cyan-300 font-mono text-sm truncate shadow-inner">
+              <div className="bg-white/5 border border-white/5 rounded-2xl py-5 px-6 pr-20 text-yellow-300 font-mono text-sm truncate shadow-inner">
                 {referralLink}
               </div>
               <button 
                 onClick={handleCopy}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-4 bg-white text-black hover:bg-cyan-50 rounded-xl transition-all active:scale-90 shadow-xl"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-4 bg-yellow-500 text-slate-950 hover:bg-yellow-400 rounded-xl transition-all active:scale-90 shadow-xl"
               >
-                {copied ? <Check size={20} className="text-cyan-600" /> : <Copy size={20} />}
+                {copied ? <Check size={20} className="text-slate-950" /> : <Copy size={20} />}
               </button>
             </div>
             
@@ -125,22 +145,22 @@ export default function Referrals() {
            <div className="space-y-10">
              {steps.map((step, i) => (
                <div key={i} className="flex gap-8 items-start group">
-                 <div className="w-14 h-14 rounded-3xl border border-white/5 flex items-center justify-center shrink-0 font-display font-black text-2xl text-cyan-500 bg-cyan-500/5 group-hover:bg-cyan-500/10 group-hover:rotate-6 transition-all duration-500">
+                 <div className="w-14 h-14 rounded-3xl border border-white/5 flex items-center justify-center shrink-0 font-display font-black text-2xl text-yellow-500 bg-yellow-500/5 group-hover:bg-yellow-500/10 group-hover:rotate-6 transition-all duration-500">
                    {i + 1}
                  </div>
                  <div className="space-y-1 pt-2">
-                   <h4 className="font-display font-bold text-xl group-hover:text-cyan-200 transition-colors">{step.title}</h4>
+                   <h4 className="font-display font-bold text-xl group-hover:text-yellow-200 transition-colors">{step.title}</h4>
                    <p className="text-sm text-white/40 leading-relaxed font-light">{step.desc}</p>
                  </div>
                </div>
              ))}
            </div>
 
-           <div className="glass-card p-6 border-pink-500/20 bg-pink-500/5 mt-10">
+           <div className="glass-card p-6 border-blue-500/20 bg-blue-500/5 mt-10">
               <div className="flex gap-4 items-start">
-                <Zap size={20} className="text-pink-400 shrink-0 mt-1" />
+                <Zap size={20} className="text-blue-400 shrink-0 mt-1" />
                 <p className="text-xs text-white/40 leading-relaxed italic font-light">
-                  <span className="text-pink-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Anti-Fraud Protocol</span>
+                  <span className="text-blue-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Anti-Fraud Protocol</span>
                   Multiple account creation is strictly forbidden. Our AI-driven detection system will automatically suspend accounts found cheating the referral system.
                 </p>
               </div>
@@ -158,7 +178,7 @@ export default function Referrals() {
         
         <div className="glass-card overflow-hidden border-white/5 min-h-[200px] flex flex-col items-center justify-center">
           {loading ? (
-            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+            <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
           ) : referrals.length > 0 ? (
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left border-collapse">
@@ -175,7 +195,7 @@ export default function Referrals() {
                     <tr key={i} className="hover:bg-white/[0.01] transition-colors cursor-default group">
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-[10px] font-bold border border-white/5 group-hover:border-cyan-500/30 group-hover:bg-cyan-500/5 transition-all">
+                           <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-[10px] font-bold border border-white/5 group-hover:border-yellow-500/30 group-hover:bg-yellow-500/5 transition-all">
                              {(row.displayName || 'UX').substring(0, 2).toUpperCase()}
                            </div>
                            <span className="font-bold text-white/80 group-hover:text-white transition-all">{row.displayName || 'Anonymous'}</span>
@@ -183,11 +203,11 @@ export default function Referrals() {
                       </td>
                       <td className="px-8 py-6 text-center text-xs text-white/30 font-medium">{new Date(row.createdAt).toLocaleDateString()}</td>
                       <td className="px-8 py-6 text-center">
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400`}>
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-yellow-500/10 text-yellow-400`}>
                           Active
                         </span>
                       </td>
-                      <td className="px-8 py-6 text-right font-display font-black text-cyan-400 text-lg group-hover:scale-105 transition-transform origin-right">
+                      <td className="px-8 py-6 text-right font-display font-black text-yellow-400 text-lg group-hover:scale-105 transition-transform origin-right">
                         ₦500
                       </td>
                     </tr>

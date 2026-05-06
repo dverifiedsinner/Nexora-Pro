@@ -29,6 +29,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     userDataRef.current = userData;
   }, [userData]);
+
+  const refreshUserData = async () => {
+    if (user) {
+      await fetchUserData(user.id, true);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -109,14 +116,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []); // Dependencies empty to run once on mount
 
-  const fetchUserData = async (uid: string) => {
-    // Return if already fetching THIS specific UID
-    if (fetchingRef.current === uid) return;
+  const fetchUserData = async (uid: string, force = false) => {
+    // Return if already fetching THIS specific UID, unless forced
+    if (fetchingRef.current === uid && !force) return;
     
     fetchingRef.current = uid;
     
-    // Only set global loading if we don't have data yet
-    if (!userDataRef.current) {
+    // Only set global loading if we don't have data yet and not forcing
+    if (!userDataRef.current && !force) {
       setLoading(true);
     }
     
@@ -191,7 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error('Critical auth flow error:', err);
     } finally {
-      setLoading(false);
+      if (!force) setLoading(false);
       fetchingRef.current = null;
     }
   };
@@ -239,6 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signIn,
       signUp,
       signOut,
+      refreshUserData,
     }}>
       {children}
     </AuthContext.Provider>

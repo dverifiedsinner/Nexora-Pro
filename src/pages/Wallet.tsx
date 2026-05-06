@@ -226,7 +226,7 @@ export default function Wallet() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 md:gap-3 px-5 py-2.5 md:px-8 md:py-3 rounded-xl font-black transition-all whitespace-nowrap ${
-                activeTab === tab.id ? 'bg-cyan-500 text-white shadow-xl shadow-cyan-500/20' : 'text-white/20 hover:text-white/60'
+                activeTab === tab.id ? 'bg-yellow-500 text-slate-950 shadow-xl shadow-yellow-500/20' : 'text-white/20 hover:text-white/60'
               }`}
             >
               <tab.icon size={14} className="md:w-4 md:h-4" />
@@ -235,7 +235,7 @@ export default function Wallet() {
           ))}
         </div>
 
-        <div className="absolute -top-10 -right-20 w-80 h-80 bg-cyan-500/5 blur-[120px] rounded-full animate-float-slow pointer-events-none"></div>
+        <div className="absolute -top-10 -right-20 w-80 h-80 bg-yellow-500/5 blur-[120px] rounded-full animate-float-slow pointer-events-none"></div>
       </header>
 
       {/* Main Wallets Overview */}
@@ -247,10 +247,10 @@ export default function Wallet() {
           {/* Glowing Aura */}
           <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-[2.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
           
-          <div className="relative h-full glass-card p-8 md:p-12 bg-gradient-to-br from-[#0c4a6e] via-[#082f49] to-black border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+          <div className="relative h-full glass-card p-8 md:p-12 bg-gradient-to-br from-slate-900 via-blue-900 to-black border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             {/* Parallax Shimmer */}
             <motion.div 
-              animate={{ x: ['-100%', '100%'], opacity: [0, 0.1, 0] }}
+              animate={{ x: ['-100%', '100%'], opacity: [0, 0.05, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent -skew-x-12 pointer-events-none"
             />
@@ -259,17 +259,17 @@ export default function Wallet() {
             <motion.div 
               animate={{ y: [0, -30, 0], x: [0, 20, 0] }}
               transition={{ duration: 8, repeat: Infinity }}
-              className="absolute -top-10 -right-10 w-48 h-48 bg-cyan-500/10 blur-[80px] rounded-full"
+              className="absolute -top-10 -right-10 w-48 h-48 bg-yellow-500/10 blur-[80px] rounded-full"
             />
             
             <div className="relative z-10 flex justify-between items-start">
-              <div className="p-4 bg-white/5 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-inner group-hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all">
-                <WalletIcon size={32} className="text-cyan-400" />
+              <div className="p-4 bg-white/5 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-inner group-hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all">
+                <WalletIcon size={32} className="text-yellow-400" />
               </div>
               <div className="text-right">
                 <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-full border border-white/5">
-                  <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
-                  <span className="text-[10px] font-black text-cyan-400 tracking-[0.2em] uppercase">Auth node active</span>
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(250,204,21,0.8)]"></div>
+                  <span className="text-[10px] font-black text-yellow-400 tracking-[0.2em] uppercase">Auth node active</span>
                 </div>
               </div>
             </div>
@@ -280,7 +280,7 @@ export default function Wallet() {
                 <div className="h-px w-8 bg-white/10"></div>
               </div>
               <h2 className="text-5xl md:text-7xl font-display font-black text-white tracking-tighter leading-none flex items-baseline gap-2">
-                <span className="text-cyan-400">₦</span>
+                <span className="text-yellow-400">₦</span>
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -290,9 +290,9 @@ export default function Wallet() {
               </h2>
               
               <div className="mt-8 flex gap-4">
-                <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-2">
-                  <ArrowUpRight size={14} className="text-emerald-400" />
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">+12.5%</span>
+                <div className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center gap-2">
+                  <ArrowUpRight size={14} className="text-yellow-400" />
+                  <span className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">+12.5%</span>
                 </div>
                 <div className="px-4 py-2 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-2">
                   <span className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">Yield: High</span>
@@ -304,8 +304,8 @@ export default function Wallet() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
           {[
-            { label: 'Bonus Reservoir', value: userData?.balances.bonus, icon: Zap, color: 'text-pink-400', from: 'from-pink-900/20', to: 'to-transparent' },
-            { label: 'Network Yield', value: userData?.balances.referral, icon: Award, color: 'text-cyan-400', from: 'from-cyan-900/20', to: 'to-transparent' }
+            { label: 'Bonus Reservoir', value: userData?.balances.bonus, icon: Zap, color: 'text-yellow-400', from: 'from-yellow-900/20', to: 'to-transparent' },
+            { label: 'Network Yield', value: userData?.balances.referral, icon: Award, color: 'text-white', from: 'from-blue-900/20', to: 'to-transparent' }
           ].map((wallet, i) => (
             <motion.div 
               key={i} 
@@ -323,7 +323,7 @@ export default function Wallet() {
                     <p className="text-3xl font-display font-black leading-none tracking-tighter">₦{wallet.value?.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:text-cyan-400 group-hover:scale-110 transition-all">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:text-yellow-400 group-hover:scale-110 transition-all">
                   <ArrowUpRight size={20} />
                 </div>
               </div>
@@ -345,13 +345,13 @@ export default function Wallet() {
                 </div>
                 
                 <div className="grid md:grid-cols-1 gap-6">
-                  <div className="p-6 md:p-10 bg-white/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-cyan-500/20 shadow-2xl shadow-cyan-500/5 relative overflow-hidden group">
+                  <div className="p-6 md:p-10 bg-white/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-yellow-500/20 shadow-2xl shadow-yellow-500/5 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 md:p-8">
-                       <Building2 size={32} className="text-white/5 group-hover:text-cyan-500/10 transition-colors md:w-12 md:h-12" />
+                       <Building2 size={32} className="text-white/5 group-hover:text-yellow-500/10 transition-colors md:w-12 md:h-12" />
                     </div>
                     <div className="space-y-4 md:space-y-6 relative z-10">
                       <div>
-                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 mb-2 md:mb-4">Official Bank Node</p>
+                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400 mb-2 md:mb-4">Official Bank Node</p>
                         <div className="space-y-3 md:space-y-4">
                           {[
                             { label: 'Bank', value: 'PALMPAY' },
@@ -365,8 +365,8 @@ export default function Wallet() {
                           ))}
                         </div>
                       </div>
-                      <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
-                        <p className="text-[8px] md:text-[10px] text-cyan-400 font-bold uppercase text-center">Transfer strictly to this node only</p>
+                      <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                        <p className="text-[8px] md:text-[10px] text-yellow-400 font-bold uppercase text-center">Transfer strictly to this node only</p>
                       </div>
                     </div>
                   </div>
@@ -379,19 +379,19 @@ export default function Wallet() {
                   </div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-4">
                     {[1000, 5000, 10000].map((amt) => (
-                      <button key={amt} onClick={() => setRechargeAmount(amt.toString())} className={`py-4 md:py-5 px-3 md:px-4 rounded-xl md:rounded-2xl font-display font-black transition-all text-xs md:text-sm shadow-xl active:scale-95 border ${rechargeAmount === amt.toString() ? 'bg-cyan-500 text-white border-white/20' : 'bg-white/5 border-white/5 hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:text-cyan-400'}`}>
+                      <button key={amt} onClick={() => setRechargeAmount(amt.toString())} className={`py-4 md:py-5 px-3 md:px-4 rounded-xl md:rounded-2xl font-display font-black transition-all text-xs md:text-sm shadow-xl active:scale-95 border ${rechargeAmount === amt.toString() ? 'bg-yellow-500 text-slate-950 border-white/20' : 'bg-white/5 border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/5 hover:text-yellow-400'}`}>
                         ₦{amt.toLocaleString()}
                       </button>
                     ))}
                   </div>
                   <div className="relative group">
-                    <span className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-cyan-400 font-black text-lg md:text-xl group-focus-within:animate-pulse">₦</span>
+                    <span className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-yellow-400 font-black text-lg md:text-xl group-focus-within:animate-pulse">₦</span>
                     <input 
                       type="text" 
                       value={rechargeAmount}
                       onChange={(e) => setRechargeAmount(e.target.value)}
                       placeholder="Custom Entry Amount" 
-                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] py-5 md:py-7 pl-12 md:pl-16 pr-6 md:pr-8 focus:outline-none focus:border-cyan-500 transition-all text-xl md:text-4xl font-display font-black placeholder:text-white/10 placeholder:font-black placeholder:uppercase placeholder:text-[10px] placeholder:tracking-[0.3em] group-focus-within:bg-white/[0.08]"
+                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] py-5 md:py-7 pl-12 md:pl-16 pr-6 md:pr-8 focus:outline-none focus:border-yellow-500 transition-all text-xl md:text-4xl font-display font-black placeholder:text-white/10 placeholder:font-black placeholder:uppercase placeholder:text-[10px] placeholder:tracking-[0.3em] group-focus-within:bg-white/[0.08]"
                     />
                   </div>
                   <div className="space-y-4">
@@ -417,7 +417,7 @@ export default function Wallet() {
                   <button 
                     onClick={handleRecharge}
                     disabled={isProcessing}
-                    className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
+                    className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-yellow-500/30 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isProcessing ? 'Processing Transaction...' : 'Verify Transfer & Recharge'}
                   </button>
@@ -427,12 +427,12 @@ export default function Wallet() {
 
             {activeTab === 'withdraw' && (
               <div className="space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="p-6 md:p-8 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl md:rounded-[2rem] flex flex-col sm:flex-row gap-4 md:gap-6 items-center sm:items-start text-center sm:text-left">
-                   <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-cyan-500/20 flex items-center justify-center shrink-0 shadow-2xl">
-                     <AlertCircle size={20} className="text-cyan-400 md:w-6 md:h-6" />
+                <div className="p-6 md:p-8 bg-yellow-500/5 border border-yellow-500/10 rounded-2xl md:rounded-[2rem] flex flex-col sm:flex-row gap-4 md:gap-6 items-center sm:items-start text-center sm:text-left">
+                   <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-yellow-500/20 flex items-center justify-center shrink-0 shadow-2xl">
+                     <AlertCircle size={20} className="text-yellow-400 md:w-6 md:h-6" />
                    </div>
                    <div>
-                     <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-0.5 md:mb-1">Liquidation Protocol</p>
+                     <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-yellow-400 mb-0.5 md:mb-1">Liquidation Protocol</p>
                      <p className="text-[10px] md:text-sm text-white/50 leading-relaxed font-light italic">
                         Node verification typically concludes within 24-48 standard cycles.
                      </p>
@@ -446,7 +446,7 @@ export default function Wallet() {
                       <select 
                         value={withdrawWallet}
                         onChange={(e) => setWithdrawWallet(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-[10px] md:text-sm uppercase tracking-widest focus:bg-white/[0.08]"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-yellow-500 transition-all appearance-none cursor-pointer font-black text-[10px] md:text-sm uppercase tracking-widest focus:bg-white/[0.08]"
                       >
                         <option className="bg-slate-900" value="main">Main Yield Reservoir</option>
                         <option className="bg-slate-900" value="referral">Referral Growth Vault</option>
@@ -463,13 +463,13 @@ export default function Wallet() {
                   <div className="space-y-3 md:space-y-4">
                     <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Liquidation Volatility</label>
                     <div className="relative group">
-                      <span className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-pink-400 font-black text-lg md:text-xl">₦</span>
+                      <span className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-yellow-400 font-black text-lg md:text-xl">₦</span>
                       <input 
                          type="text" 
                         value={withdrawAmount}
                         onChange={(e) => setWithdrawAmount(e.target.value)}
                         placeholder="ENTER AMOUNT" 
-                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 pl-12 md:pl-16 pr-6 md:pr-8 focus:outline-none focus:border-cyan-500 transition-all font-black text-xl md:text-2xl placeholder:text-white/10 placeholder:text-[10px] placeholder:tracking-[0.2em] focus:bg-white/[0.08]"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 pl-12 md:pl-16 pr-6 md:pr-8 focus:outline-none focus:border-yellow-500 transition-all font-black text-xl md:text-2xl placeholder:text-white/10 placeholder:text-[10px] placeholder:tracking-[0.2em] focus:bg-white/[0.08]"
                       />
                     </div>
                   </div>
@@ -482,13 +482,13 @@ export default function Wallet() {
                         value={withdrawAccount}
                         onChange={(e) => setWithdrawAccount(e.target.value)}
                         placeholder="Account Node ID" 
-                        className="bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-cyan-500 transition-all font-medium placeholder:text-white/10 text-sm" 
+                        className="bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-yellow-500 transition-all font-medium placeholder:text-white/10 text-sm" 
                       />
                       <div className="relative group">
                         <select 
                           value={withdrawBank}
                           onChange={(e) => setWithdrawBank(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-[9px] md:text-[10px] uppercase tracking-widest focus:bg-white/[0.08]"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-yellow-500 transition-all appearance-none cursor-pointer font-black text-[9px] md:text-[10px] uppercase tracking-widest focus:bg-white/[0.08]"
                         >
                           <option className="bg-slate-900" value="">Choose Bank Node</option>
                           <option className="bg-slate-900">ACCESS PROTOCOL</option>
@@ -505,7 +505,7 @@ export default function Wallet() {
                   <button 
                     onClick={handleWithdraw}
                     disabled={isProcessing || !withdrawAmount}
-                    className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
+                    className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-yellow-500/30 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isProcessing ? 'Processing Liquidation...' : 'Execute Vault Outflow'}
                   </button>
@@ -518,17 +518,17 @@ export default function Wallet() {
                 <div className="grid grid-cols-2 gap-4 md:gap-8">
                    <button 
                      onClick={() => setConversionType('airtime')}
-                     className={`p-6 md:p-10 border rounded-[2rem] md:rounded-[3rem] flex flex-col items-center gap-4 md:gap-6 group transition-all active:scale-95 shadow-xl md:shadow-2xl ${conversionType === 'airtime' ? 'bg-cyan-500/10 border-cyan-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
-                      <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center transition-all duration-700 shadow-2xl border border-white/5 ${conversionType === 'airtime' ? 'bg-cyan-500/20 scale-110 rotate-12' : 'bg-white/5'}`}>
-                        <Smartphone size={24} className={conversionType === 'airtime' ? 'text-cyan-400 md:w-10 md:h-10' : 'text-white/20 md:w-10 md:h-10'} />
+                     className={`p-6 md:p-10 border rounded-[2rem] md:rounded-[3rem] flex flex-col items-center gap-4 md:gap-6 group transition-all active:scale-95 shadow-xl md:shadow-2xl ${conversionType === 'airtime' ? 'bg-yellow-500/10 border-yellow-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                      <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center transition-all duration-700 shadow-2xl border border-white/5 ${conversionType === 'airtime' ? 'bg-yellow-500/20 scale-110 rotate-12' : 'bg-white/5'}`}>
+                        <Smartphone size={24} className={conversionType === 'airtime' ? 'text-yellow-400 md:w-10 md:h-10' : 'text-white/20 md:w-10 md:h-10'} />
                       </div>
                       <span className="font-black text-[8px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-white/60">Airtime Swap</span>
                    </button>
                    <button 
                      onClick={() => setConversionType('data')}
-                     className={`p-6 md:p-10 border rounded-[2rem] md:rounded-[3rem] flex flex-col items-center gap-4 md:gap-6 group transition-all active:scale-95 shadow-xl md:shadow-2xl ${conversionType === 'data' ? 'bg-pink-500/10 border-pink-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
-                      <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center transition-all duration-700 shadow-2xl border border-white/5 ${conversionType === 'data' ? 'bg-pink-500/20 scale-110 -rotate-12' : 'bg-white/5'}`}>
-                        <Wifi size={24} className={conversionType === 'data' ? 'text-pink-400 md:w-10 md:h-10' : 'text-white/20 md:w-10 md:h-10'} />
+                     className={`p-6 md:p-10 border rounded-[2rem] md:rounded-[3rem] flex flex-col items-center gap-4 md:gap-6 group transition-all active:scale-95 shadow-xl md:shadow-2xl ${conversionType === 'data' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                      <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center transition-all duration-700 shadow-2xl border border-white/5 ${conversionType === 'data' ? 'bg-blue-500/20 scale-110 -rotate-12' : 'bg-white/5'}`}>
+                        <Wifi size={24} className={conversionType === 'data' ? 'text-blue-400 md:w-10 md:h-10' : 'text-white/20 md:w-10 md:h-10'} />
                       </div>
                       <span className="font-black text-[8px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-white/60">Data Stream</span>
                    </button>
@@ -542,7 +542,7 @@ export default function Wallet() {
                       value={convertPhone}
                       onChange={(e) => setConvertPhone(e.target.value)}
                       placeholder="080 0000 0000" 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 md:py-7 px-6 md:px-10 focus:outline-none focus:border-cyan-500 transition-all font-display font-black text-xl md:text-3xl placeholder:text-white/5 tracking-tighter" 
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 md:py-7 px-6 md:px-10 focus:outline-none focus:border-yellow-500 transition-all font-display font-black text-xl md:text-3xl placeholder:text-white/5 tracking-tighter" 
                     />
                   </div>
 
@@ -550,7 +550,7 @@ export default function Wallet() {
                     <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Network Architecture</label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4">
                       {['MTN', 'AIRTEL', 'GLO', '9MOBILE'].map((n) => (
-                        <button key={n} onClick={() => setNetwork(n)} className={`py-3 md:py-4 border rounded-xl md:rounded-2xl text-[8px] md:text-[9px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] transition-all active:scale-95 shadow-lg ${network === n ? 'bg-cyan-500/20 border-cyan-400 text-cyan-400' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/60'}`}>
+                        <button key={n} onClick={() => setNetwork(n)} className={`py-3 md:py-4 border rounded-xl md:rounded-2xl text-[8px] md:text-[9px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] transition-all active:scale-95 shadow-lg ${network === n ? 'bg-yellow-500/20 border-yellow-400 text-yellow-400' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/60'}`}>
                           {n}
                         </button>
                       ))}
@@ -567,13 +567,13 @@ export default function Wallet() {
                              const pkg = dataPackages.find(p => p.price === Number(e.target.value));
                              if (pkg) setDataPackage({ price: pkg.price, label: pkg.val });
                            }}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-10 focus:outline-none focus:border-pink-500 transition-all appearance-none cursor-pointer font-black text-[10px] md:text-xs uppercase tracking-widest focus:bg-white/[0.08]"
+                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-10 focus:outline-none focus:border-yellow-500 transition-all appearance-none cursor-pointer font-black text-[10px] md:text-xs uppercase tracking-widest focus:bg-white/[0.08]"
                          >
                            {dataPackages.map(p => (
                              <option key={p.val} value={p.price} className="bg-slate-900">{p.label}</option>
                            ))}
                          </select>
-                         <Wifi size={14} className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 text-pink-500 animate-pulse md:w-5 md:h-5" />
+                         <Wifi size={14} className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 text-yellow-500 animate-pulse md:w-5 md:h-5" />
                       </div>
                     </div>
                   )}
@@ -582,13 +582,13 @@ export default function Wallet() {
                     <div className="space-y-3 md:space-y-4 animate-in slide-in-from-top-2 duration-300">
                       <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Credit Value</label>
                       <div className="relative group">
-                         <span className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 text-cyan-400 font-display font-black text-lg md:text-xl">₦</span>
+                         <span className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 text-yellow-400 font-display font-black text-lg md:text-xl">₦</span>
                          <input 
                            type="text" 
                            value={convertValue}
                            onChange={(e) => setConvertValue(e.target.value)}
                            placeholder="Enter Value" 
-                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-5 md:py-6 pl-10 md:pl-16 pr-6 md:pr-10 focus:outline-none focus:border-cyan-500 transition-all font-display font-black text-xl md:text-2xl placeholder:text-white/10" 
+                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-5 md:py-6 pl-10 md:pl-16 pr-6 md:pr-10 focus:outline-none focus:border-yellow-500 transition-all font-display font-black text-xl md:text-2xl placeholder:text-white/10" 
                          />
                       </div>
                     </div>
@@ -600,20 +600,20 @@ export default function Wallet() {
                       <select 
                         value={convertWallet}
                         onChange={(e) => setConvertWallet(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-10 focus:outline-none focus:border-cyan-500 transition-all appearance-none cursor-pointer font-black text-[10px] md:text-xs uppercase tracking-widest focus:bg-white/[0.08]"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-10 focus:outline-none focus:border-yellow-500 transition-all appearance-none cursor-pointer font-black text-[10px] md:text-xs uppercase tracking-widest focus:bg-white/[0.08]"
                       >
                         <option className="bg-slate-900" value="main">MAIN YIELD Reservoir</option>
                         <option className="bg-slate-900" value="bonus">BONUS RESERVOIR</option>
                         <option className="bg-slate-900" value="investment">INVESTMENT WALLET</option>
                         <option className="bg-slate-900" value="referral">REFERRAL VAULT</option>
                       </select>
-                      <Zap size={14} className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 text-cyan-400 animate-pulse md:w-5 md:h-5" />
+                      <Zap size={14} className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 text-yellow-400 animate-pulse md:w-5 md:h-5" />
                     </div>
                   </div>
                   <button 
                     onClick={handleConvert}
                     disabled={isProcessing}
-                    className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all disabled:opacity-50"
+                    className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-yellow-500/30 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isProcessing ? 'Swapping Assets...' : 'Initiate Asset Conversion'}
                   </button>
@@ -627,16 +627,16 @@ export default function Wallet() {
           <section>
             <div className="flex items-center justify-between mb-6 md:mb-8 px-2">
               <h3 className="text-lg md:text-xl font-display font-black italic uppercase tracking-widest flex items-center gap-3 md:gap-4">
-                <div className="h-0.5 w-6 md:w-10 bg-cyan-500 rounded-full"></div> Ledger
+                <div className="h-0.5 w-6 md:w-10 bg-yellow-500 rounded-full"></div> Ledger
               </h3>
-              <button className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-cyan-400 transition-all">DEEP AUDIT</button>
+              <button className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-yellow-400 transition-all">DEEP AUDIT</button>
             </div>
             <div className="glass-card p-2 md:p-3 space-y-1.5 md:space-y-2 border-white/5 shadow-2xl">
               {(userData as any)?.transactions?.length > 0 ? (
                 [...(userData as any).transactions].reverse().map((t: any, i: number) => (
                   <div key={i} className="flex items-center justify-between p-4 md:p-6 hover:bg-white/[0.03] rounded-2xl md:rounded-[2rem] transition-all cursor-pointer group active:scale-[0.98] border border-transparent hover:border-white/5">
                     <div className="flex gap-3 md:gap-5 items-center">
-                      <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-all ${t.amount > 0 ? 'bg-cyan-500/10 text-cyan-400' : 'bg-pink-500/10 text-pink-500'}`}>
+                      <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-all ${t.amount > 0 ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-500'}`}>
                          {t.amount > 0 ? <ArrowDownLeft size={18} className="md:w-[22px] md:h-[22px]" /> : <ArrowUpRight size={18} className="md:w-[22px] md:h-[22px]" />}
                       </div>
                       <div>
@@ -644,11 +644,11 @@ export default function Wallet() {
                         <div className="flex items-center gap-2 md:gap-3 mt-1">
                           <p className="text-[8px] md:text-[9px] text-white/20 font-black uppercase italic">{new Date(t.time).toLocaleDateString()}</p>
                           <span className="w-1 h-1 bg-white/10 rounded-full"></span>
-                          <p className="text-[8px] text-cyan-400/60 font-black uppercase tracking-[0.1em] md:tracking-[0.2em]">{t.status}</p>
+                          <p className="text-[8px] text-yellow-400/60 font-black uppercase tracking-[0.1em] md:tracking-[0.2em]">{t.status}</p>
                         </div>
                       </div>
                     </div>
-                    <p className={`text-base md:text-xl font-display font-black ${t.amount > 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
+                    <p className={`text-base md:text-xl font-display font-black ${t.amount > 0 ? 'text-yellow-400' : 'text-red-500'}`}>
                       {t.amount > 0 ? '+' : '-'}₦{Math.abs(t.amount).toLocaleString()}
                     </p>
                   </div>
@@ -661,10 +661,10 @@ export default function Wallet() {
             </div>
           </section>
 
-          <div className="glass-card p-8 md:p-10 border-white/5 bg-gradient-to-br from-cyan-900/40 via-black to-black shadow-2xl relative overflow-hidden group">
-             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.1),transparent)] group-hover:opacity-100 transition-opacity"></div>
-             <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-[2.5rem] bg-cyan-500 shadow-2xl shadow-cyan-500/40 flex items-center justify-center mb-6 md:mb-8 relative z-10 animate-float">
-               <Zap size={24} className="text-white fill-white md:w-8 md:h-8" />
+          <div className="glass-card p-8 md:p-10 border-white/5 bg-gradient-to-br from-blue-900/40 via-black to-black shadow-2xl relative overflow-hidden group">
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(250,204,21,0.1),transparent)] group-hover:opacity-100 transition-opacity"></div>
+             <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-[2.5rem] bg-yellow-500 shadow-2xl shadow-yellow-500/40 flex items-center justify-center mb-6 md:mb-8 relative z-10 animate-float">
+               <Zap size={24} className="text-slate-950 fill-slate-950 md:w-8 md:h-8" />
              </div>
              <h4 className="font-display font-black text-xl md:text-2xl mb-3 md:mb-4 italic uppercase tracking-tight relative z-10">Maximizer <br /> Protocol.</h4>
              <p className="text-xs md:text-sm text-white/40 leading-relaxed font-light italic relative z-10">
@@ -672,7 +672,7 @@ export default function Wallet() {
              </p>
              <div className="mt-6 md:mt-8 relative z-10">
                 <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                   <div className="w-3/4 h-full bg-gradient-to-r from-cyan-400 to-blue-600 shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
+                   <div className="w-3/4 h-full bg-gradient-to-r from-yellow-400 to-yellow-600 shadow-[0_0_10px_rgba(250,204,21,0.5)]"></div>
                 </div>
                 <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mt-3 md:mt-4">75% to Next Unlock</p>
              </div>

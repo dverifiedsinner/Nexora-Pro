@@ -44,10 +44,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#080a0f] text-white selection:bg-cyan-500/30">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#020617] text-white selection:bg-yellow-500/30">
       {/* Mobile/Tablet Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-2 bg-gradient-to-t from-[#080a0f] via-[#080a0f]/95 to-transparent">
-        <div className="bg-[#11151c]/90 backdrop-blur-2xl border border-white/5 rounded-3xl p-2 flex justify-between items-center shadow-2xl shadow-cyan-500/10">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-2 bg-gradient-to-t from-[#020617] via-[#020617]/95 to-transparent">
+        <div className="bg-[#0f172a]/90 backdrop-blur-2xl border border-white/5 rounded-3xl p-2 flex justify-between items-center shadow-2xl shadow-yellow-500/10">
           {navItems.slice(0, 5).map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -55,15 +55,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 key={item.name}
                 to={item.path}
                 className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all relative ${
-                  isActive ? 'text-cyan-400' : 'text-white/30'
+                  isActive ? 'text-yellow-400' : 'text-white/30'
                 }`}
               >
-                <item.icon size={18} className={isActive ? 'animate-pulse text-cyan-400' : ''} />
+                <item.icon size={18} className={isActive ? 'animate-pulse text-yellow-400' : ''} />
                 <span className="text-[8px] font-black uppercase tracking-[0.1em]">{item.name}</span>
                 {isActive && (
                   <motion.div 
                     layoutId="mobile-active-nav"
-                    className="absolute -bottom-1 w-1 h-1 bg-cyan-400 rounded-full"
+                    className="absolute -bottom-1 w-1 h-1 bg-yellow-400 rounded-full"
                   />
                 )}
               </Link>
@@ -73,16 +73,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </div>
 
       {/* Mobile Top Nav (Hidden on LG) */}
-      <div className="lg:hidden sticky top-0 z-50 px-6 py-4 flex justify-between items-center bg-[#080a0f]/80 backdrop-blur-xl border-b border-white/5">
+      <div className="lg:hidden sticky top-0 z-50 px-6 py-4 flex justify-between items-center bg-[#020617]/80 backdrop-blur-xl border-b border-white/5">
         <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <Zap className="w-5 h-5 text-white fill-white" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
+            <Zap className="w-5 h-5 text-slate-950 fill-slate-950" />
           </div>
           <span className="font-display font-black text-xl tracking-tighter italic">NEXORA.</span>
         </Link>
         <button 
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-cyan-400 active:scale-95 transition-all"
+          className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-yellow-400 active:scale-95 transition-all"
         >
           {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -92,11 +92,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <motion.aside 
         initial={false}
         animate={{ x: isMenuOpen ? 0 : -300 }}
-        className={`fixed lg:relative top-0 left-0 z-40 w-72 h-[100dvh] lg:h-screen bg-[#0d1117] lg:bg-white/5 backdrop-blur-3xl border-r border-white/5 flex flex-col p-6 lg:p-10 transition-all duration-300 ease-in-out lg:translate-x-0 ${isMenuOpen ? 'translate-x-0 shadow-[0_0_100px_rgba(0,0,0,0.8)]' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed lg:relative top-0 left-0 z-40 w-72 h-[100dvh] lg:h-screen bg-[#0a192f] lg:bg-white/5 backdrop-blur-3xl border-r border-white/5 flex flex-col p-6 lg:p-10 transition-all duration-300 ease-in-out lg:translate-x-0 ${isMenuOpen ? 'translate-x-0 shadow-[0_0_100px_rgba(0,0,0,0.8)]' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="hidden lg:flex items-center gap-4 mb-10 lg:mb-16 lg:justify-start px-2">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-[1.25rem] bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center shadow-2xl shadow-cyan-500/30 shrink-0">
-            <Zap className="w-6 h-6 lg:w-7 lg:h-7 text-white fill-white" />
+          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-[1.25rem] bg-gradient-to-tr from-yellow-400 to-yellow-600 flex items-center justify-center shadow-2xl shadow-yellow-500/30 shrink-0">
+            <Zap className="w-6 h-6 lg:w-7 lg:h-7 text-slate-950 fill-slate-950" />
           </div>
           <span className="font-display font-black text-2xl lg:text-3xl tracking-tighter italic lg:block truncate">NEXORA.</span>
         </div>
@@ -111,7 +111,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 onClick={() => setIsMenuOpen(false)}
                 className={`flex items-center gap-4 px-4 lg:px-6 py-3 lg:py-4 rounded-xl lg:rounded-[1.25rem] transition-all group relative overflow-hidden lg:justify-start ${
                   isActive 
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_20px_rgba(34,211,238,0.1)]' 
+                    ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 shadow-[0_0_20px_rgba(250,204,21,0.1)]' 
                     : 'text-white/30 hover:text-white hover:bg-white/5 border border-transparent'
                 }`}
                 title={item.name}
@@ -119,16 +119,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 {isActive && (
                   <motion.div 
                     layoutId="sidebar-active-glow"
-                    className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-transparent pointer-events-none"
+                    className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-transparent pointer-events-none"
                   />
                 )}
-                <item.icon size={20} className={`relative z-10 transition-all duration-500 shrink-0 ${isActive ? 'text-cyan-400 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'group-hover:scale-110 group-hover:text-white'}`} />
+                <div className={`relative z-10 transition-all duration-500 shrink-0 ${isActive ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]' : 'group-hover:scale-110 group-hover:text-white'}`}>
+                  <item.icon size={20} className={isActive ? 'text-white' : 'text-white/30 group-hover:text-white'} />
+                </div>
                 <span className="relative z-10 font-bold text-[10px] lg:block uppercase tracking-[0.2em] leading-none truncate">{item.name}</span>
                 
                 {isActive && (
                   <motion.div 
                     layoutId="active-indicator"
-                    className="absolute left-0 w-1 h-6 lg:h-8 bg-cyan-400 rounded-r-full"
+                    className="absolute left-0 w-1 h-6 lg:h-8 bg-yellow-400 rounded-r-full"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
@@ -137,18 +139,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           })}
         </nav>
 
-        <div className="mt-6 lg:block p-5 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-xl mb-8">
-          <p className="text-[10px] opacity-80 uppercase font-bold mb-1">Nexora Pro</p>
-          <p className="text-xs mb-3 font-semibold text-white">Earn 2x more per task today!</p>
-          <button className="w-full py-2 bg-white text-blue-600 text-[10px] font-bold rounded-lg shadow-sm">Upgrade Now</button>
+        <div className="mt-6 lg:block p-5 rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-xl mb-8">
+          <p className="text-[10px] text-slate-950 opacity-80 uppercase font-black mb-1">Nexora Pro</p>
+          <p className="text-xs mb-3 font-semibold text-slate-950">Earn 2x more per task today!</p>
+          <button className="w-full py-2 bg-slate-950 text-yellow-400 text-[10px] font-black rounded-lg shadow-sm">Upgrade Now</button>
         </div>
 
         <div className="mt-auto space-y-4 pt-6 border-t border-white/10">
           <div className="flex items-center gap-3 px-2 lg:justify-start">
             <img 
-              src={userData?.photoURL || `https://ui-avatars.com/api/?name=${userData?.displayName}&background=random`} 
+              src={userData?.photoURL || `https://ui-avatars.com/api/?name=${userData?.displayName}&background=020617&color=facc15`} 
               alt="Profile" 
-              className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-cyan-400/30 p-0.5 shrink-0"
+              className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-yellow-400/30 p-0.5 shrink-0"
               referrerPolicy="no-referrer"
             />
             <div className="overflow-hidden lg:block">
@@ -187,9 +189,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <motion.button
             whileHover={{ scale: 1.1, rotate: 12 }}
             whileTap={{ scale: 0.9 }}
-            className="w-16 h-16 rounded-[2rem] bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-white shadow-2xl shadow-cyan-500/40 border-4 border-white/10 animate-float"
+            className="w-16 h-16 rounded-[2rem] bg-gradient-to-tr from-yellow-400 to-yellow-600 flex items-center justify-center text-slate-950 shadow-2xl shadow-yellow-500/40 border-4 border-white/10 animate-float"
           >
-            <Zap size={24} className="fill-white" />
+            <Zap size={24} className="fill-slate-950" />
           </motion.button>
         </div>
       </main>

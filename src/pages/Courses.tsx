@@ -5,8 +5,68 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Quiz from '../components/Quiz';
 
+const defaultCourses = [
+  { 
+    id: 'c1', 
+    title: 'Digital Marketing Mastery', 
+    price: 2500, 
+    reward: 8750, 
+    category: 'Marketing', 
+    lessons: 12, 
+    duration: '4h 30m',
+    rating: 4.8,
+    members: 1240,
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400',
+    questions: [
+      { id: 1, text: "What is the primary goal of SEO?", options: ["Visibility", "Offline Sales", "Color Theory", "Server Speed"], correctAnswer: 0 },
+      { id: 2, text: "Which platform is best for B2B marketing?", options: ["TikTok", "LinkedIn", "Instagram", "Snapchat"], correctAnswer: 1 },
+      { id: 3, text: "What does CTR stand for?", options: ["Click Through Rate", "Cost To Run", "Client Trust Ratio", "Core Task Result"], correctAnswer: 0 },
+      { id: 4, text: "A high bounce rate usually indicates?", options: ["Success", "Good content", "Poor user experience", "High load speed"], correctAnswer: 2 },
+      { id: 5, text: "Which is a 'Social Proof' element?", options: ["Testimonials", "Product Price", "Logo Color", "Font size"], correctAnswer: 0 },
+    ]
+  },
+  { 
+    id: 'c2', 
+    title: 'Crypto Trading Alpha', 
+    price: 5000, 
+    reward: 17500, 
+    category: 'Finance', 
+    lessons: 18, 
+    duration: '6h 15m',
+    rating: 4.9,
+    members: 850,
+    image: 'https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&q=80&w=400',
+    questions: [
+      { id: 1, text: "What's an 'ATH'?", options: ["All Time High", "All Time Honor", "Asset Trade Hour", "Active Time Hold"], correctAnswer: 0 },
+      { id: 2, text: "Which wallet is most secure?", options: ["Exchange", "Hot Wallet", "Cold Wallet", "Web Extension"], correctAnswer: 2 },
+      { id: 3, text: "What is 'FOMO'?", options: ["Fear Of Missing Out", "Fast Open Market Order", "Fixed Only Margin Option", "Future Option Market Offer"], correctAnswer: 0 },
+      { id: 4, text: "Who founded Bitcoin?", options: ["Vitalik", "Satoshi", "Elon", "Zuck"], correctAnswer: 1 },
+      { id: 5, text: "Ethereum's consensus is?", options: ["PoW", "PoS", "PBFT", "DPoS"], correctAnswer: 1 },
+    ]
+  },
+  { 
+    id: 'c3', 
+    title: 'UI Design Lab', 
+    price: 3000, 
+    reward: 10500, 
+    category: 'Design', 
+    lessons: 10, 
+    duration: '3h 45m',
+    rating: 4.7,
+    members: 520,
+    image: 'https://images.unsplash.com/photo-1586717791821-3f44a563dc4c?auto=format&fit=crop&q=80&w=400',
+    questions: [
+      { id: 1, text: "What is white space?", options: ["Empty area", "White colored font", "Error space", "Header area"], correctAnswer: 0 },
+      { id: 2, text: "Which is a primary color?", options: ["Green", "Purple", "Blue", "Orange"], correctAnswer: 2 },
+      { id: 3, text: "What does UI stand for?", options: ["User Interface", "User Interaction", "Unit Internal", "Unique Idea"], correctAnswer: 0 },
+      { id: 4, text: "Contrast helps with?", options: ["Legibility", "Speed", "Price", "Coding"], correctAnswer: 0 },
+      { id: 5, text: "What is a 'Mockup'?", options: ["Final code", "Sketch", "Static design", "Idea"], correctAnswer: 2 },
+    ]
+  }
+];
+
 export default function Courses() {
-  const { userData } = useAuth();
+  const { userData, refreshUserData } = useAuth();
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [isQuizzing, setIsQuizzing] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -17,6 +77,16 @@ export default function Courses() {
 
   React.useEffect(() => {
     let mounted = true;
+
+    // Local safety timeout to force loading off after 8s
+    const timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn("Courses: Data fetch timed out, unlocking loader.");
+        if (courses.length === 0) setCourses(defaultCourses);
+        setLoading(false);
+      }
+    }, 8000);
+
     const fetchCourses = async () => {
       try {
         console.log("Courses: Fetching node curriculum...");
@@ -46,82 +116,31 @@ export default function Courses() {
         console.error("Courses: Fetch critical error:", err);
         if (mounted) setCourses(defaultCourses);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          clearTimeout(timeoutId);
+        }
       }
     };
+
     fetchCourses();
-    return () => { mounted = false; };
+    return () => { 
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
-  const defaultCourses = [
-    { 
-      id: 'c1', 
-      title: 'Digital Marketing Mastery', 
-      price: 2500, 
-      reward: 8750, 
-      category: 'Marketing', 
-      lessons: 12, 
-      duration: '4h 30m',
-      rating: 4.8,
-      members: 1240,
-      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400',
-      questions: [
-        { id: 1, text: "What is the primary goal of SEO?", options: ["Visibility", "Offline Sales", "Color Theory", "Server Speed"], correctAnswer: 0 },
-        { id: 2, text: "Which platform is best for B2B marketing?", options: ["TikTok", "LinkedIn", "Instagram", "Snapchat"], correctAnswer: 1 },
-        { id: 3, text: "What does CTR stand for?", options: ["Click Through Rate", "Cost To Run", "Client Trust Ratio", "Core Task Result"], correctAnswer: 0 },
-        { id: 4, text: "A high bounce rate usually indicates?", options: ["Success", "Good content", "Poor user experience", "High load speed"], correctAnswer: 2 },
-        { id: 5, text: "Which is a 'Social Proof' element?", options: ["Testimonials", "Product Price", "Logo Color", "Font size"], correctAnswer: 0 },
-      ]
-    },
-    { 
-      id: 'c2', 
-      title: 'Crypto Trading Alpha', 
-      price: 5000, 
-      reward: 17500, 
-      category: 'Finance', 
-      lessons: 18, 
-      duration: '6h 15m',
-      rating: 4.9,
-      members: 850,
-      image: 'https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&q=80&w=400',
-      questions: [
-        { id: 1, text: "What's an 'ATH'?", options: ["All Time High", "All Time Honor", "Asset Trade Hour", "Active Time Hold"], correctAnswer: 0 },
-        { id: 2, text: "Which wallet is most secure?", options: ["Exchange", "Hot Wallet", "Cold Wallet", "Web Extension"], correctAnswer: 2 },
-        { id: 3, text: "What is 'FOMO'?", options: ["Fear Of Missing Out", "Fast Open Market Order", "Fixed Only Margin Option", "Future Option Market Offer"], correctAnswer: 0 },
-        { id: 4, text: "Who founded Bitcoin?", options: ["Vitalik", "Satoshi", "Elon", "Zuck"], correctAnswer: 1 },
-        { id: 5, text: "Ethereum's consensus is?", options: ["PoW", "PoS", "PBFT", "DPoS"], correctAnswer: 1 },
-      ]
-    },
-    { 
-      id: 'c3', 
-      title: 'UI Design Lab', 
-      price: 3000, 
-      reward: 10500, 
-      category: 'Design', 
-      lessons: 10, 
-      duration: '3h 45m',
-      rating: 4.7,
-      members: 520,
-      image: 'https://images.unsplash.com/photo-1586717791821-3f44a563dc4c?auto=format&fit=crop&q=80&w=400',
-      questions: [
-        { id: 1, text: "What is white space?", options: ["Empty area", "White colored font", "Error space", "Header area"], correctAnswer: 0 },
-        { id: 2, text: "Which is a primary color?", options: ["Green", "Purple", "Blue", "Orange"], correctAnswer: 2 },
-        { id: 3, text: "What does UI stand for?", options: ["User Interface", "User Interaction", "Unit Internal", "Unique Idea"], correctAnswer: 0 },
-        { id: 4, text: "Contrast helps with?", options: ["Legibility", "Speed", "Price", "Coding"], correctAnswer: 0 },
-        { id: 5, text: "What is a 'Mockup'?", options: ["Final code", "Sketch", "Static design", "Idea"], correctAnswer: 2 },
-      ]
-    }
-  ];
 
   const [enrollConfirmation, setEnrollConfirmation] = useState<{ course: any, walletType: 'main' | 'bonus' } | null>(null);
 
   const handleEnroll = async () => {
-    if (!userData || !enrollConfirmation) return;
+    if (!userData || !enrollConfirmation || !refreshUserData) return;
     
     const { course, walletType } = enrollConfirmation;
+    const currentBalance = Number((userData.balances as any)?.[walletType] || 0);
 
-    if (Number((userData.balances as any)[walletType]) < course.price) {
-      alert(`Insufficient funds in ${walletType} Wallet. Please fund your node.`);
+    if (currentBalance < course.price) {
+      alert(`Insufficient funds in ${walletType} Wallet. Current: ₦${currentBalance.toLocaleString()}. Required: ₦${course.price.toLocaleString()}`);
       setEnrollConfirmation(null);
       return;
     }
@@ -131,14 +150,14 @@ export default function Courses() {
     try {
       const newBalances = {
         ...userData.balances,
-        [walletType]: Number((userData.balances as any)[walletType]) - course.price
+        [walletType]: currentBalance - course.price
       };
       
       const enrolledCourses = Array.isArray((userData as any).enrolledCourses) 
         ? [...(userData as any).enrolledCourses, course.id]
         : [course.id];
 
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           balances: newBalances,
@@ -146,10 +165,11 @@ export default function Courses() {
         })
         .eq('uid', userData.uid);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
       
       // Log transaction
       const newTransaction = {
+        id: Math.random().toString(36).substring(7),
         type: 'course_purchase',
         title: `COURSE ACCESS: ${course.title}`,
         amount: -course.price,
@@ -166,7 +186,7 @@ export default function Courses() {
       if (userData.referredBy) {
         const { data: referrer, error: refError } = await supabase
           .from('profiles')
-          .select('balances')
+          .select('balances, uid')
           .eq('uid', userData.referredBy)
           .single();
 
@@ -174,7 +194,7 @@ export default function Courses() {
           const commission = course.price * 0.25;
           const newRefBalances = {
             ...referrer.balances,
-            referral: Number(referrer.balances.referral || 0) + commission
+            referral: Number(referrer.balances?.referral || 0) + commission
           };
           await supabase
             .from('profiles')
@@ -183,13 +203,16 @@ export default function Courses() {
         }
       }
 
+      await refreshUserData();
+      alert('Access authorized. Node synchronized.');
+      
       // Automatically start the quiz after successful enrollment
       setSelectedCourse(course);
       setIsQuizzing(true);
       
-    } catch (err) {
-      console.error(err);
-      alert('Enrollment failed');
+    } catch (err: any) {
+      console.error('Enrollment error:', err);
+      alert(`Enrollment failed: ${err.message || 'System error'}`);
     } finally {
       setIsEnrolling(false);
     }
@@ -219,6 +242,7 @@ export default function Courses() {
         .eq('uid', userData.uid);
 
       if (error) throw error;
+      await refreshUserData();
       // Optionally remove from enrolled or mark as completed
     } catch (err) {
       console.error(err);
@@ -235,7 +259,7 @@ export default function Courses() {
   if (loading && courses.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 size={48} className="text-cyan-400 animate-spin" />
+        <Loader2 size={48} className="text-yellow-400 animate-spin" />
       </div>
     );
   }
@@ -249,11 +273,11 @@ export default function Courses() {
         </div>
         <div className="flex gap-4">
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 transition-colors" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-yellow-400 transition-colors" size={18} />
             <input 
               type="text" 
               placeholder="Filter nodes..." 
-              className="bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-12 pr-6 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all w-full md:w-64 text-[10px] font-black uppercase tracking-widest"
+              className="bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-12 pr-6 focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/20 transition-all w-full md:w-64 text-[10px] font-black uppercase tracking-widest"
             />
           </div>
         </div>
@@ -262,10 +286,10 @@ export default function Courses() {
       {/* Course Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {[
-          { label: 'Active Nodes', value: (userData as any)?.enrolledCourses?.length || '0', icon: BookOpen, color: 'text-cyan-400' },
-          { label: 'Yield Gained', value: `₦${(userData?.balances?.investment || 0).toLocaleString()}`, icon: Award, color: 'text-pink-400' },
-          { label: 'Bonus Reserve', value: `₦${(userData?.balances?.bonus || 0).toLocaleString()}`, icon: Zap, color: 'text-blue-400' },
-          { label: 'Network Size', value: '1.2k+', icon: Star, color: 'text-amber-400' },
+          { label: 'Active Nodes', value: (userData as any)?.enrolledCourses?.length || '0', icon: BookOpen, color: 'text-yellow-400' },
+          { label: 'Yield Gained', value: `₦${(userData?.balances?.investment || 0).toLocaleString()}`, icon: Award, color: 'text-blue-400' },
+          { label: 'Bonus Reserve', value: `₦${(userData?.balances?.bonus || 0).toLocaleString()}`, icon: Zap, color: 'text-yellow-500' },
+          { label: 'Network Size', value: '1.2k+', icon: Star, color: 'text-white' },
         ].map((stat, i) => (
           <div key={i} className="glass-card p-6 flex items-center gap-5 border-white/5 shadow-xl animate-float" style={{ animationDelay: `${i * 0.2}s` }}>
             <div className={`w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 ${stat.color} shadow-2xl`}>
@@ -295,23 +319,23 @@ export default function Courses() {
                  src={course.image} 
                  alt={course.title} 
                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 grayscale-[50%] group-hover:grayscale-0" 
-               />
-               <div className="absolute top-4 left-4 flex gap-2 z-10">
-                 <span className="px-4 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-cyan-400 border border-cyan-500/30">
-                    {course.category}
-                 </span>
-               </div>
-               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f1d] via-[#0a0f1d]/20 to-transparent"></div>
+              />
+              <div className="absolute top-4 left-4 flex gap-2 z-10">
+                <span className="px-4 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-yellow-400 border border-yellow-500/30">
+                   {course.category}
+                </span>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/20 to-transparent"></div>
             </div>
             
             <div className="p-8 flex-1 flex flex-col relative z-10">
-              <h3 className="text-2xl font-display font-black tracking-tighter uppercase italic leading-[1.1] mb-4 group-hover:text-cyan-400 transition-colors">
+              <h3 className="text-2xl font-display font-black tracking-tighter uppercase italic leading-[1.1] mb-4 group-hover:text-yellow-400 transition-colors">
                 {course.title}
               </h3>
               
               <div className="flex items-center gap-4 text-[9px] uppercase tracking-[0.2em] font-black text-white/20 mb-8">
-                <span className="flex items-center gap-1.5"><BookOpen size={12} className="text-cyan-400" /> {course.lessons} Audits</span>
-                <span className="flex items-center gap-1.5"><Clock size={12} className="text-cyan-400" /> {course.duration}</span>
+                <span className="flex items-center gap-1.5"><BookOpen size={12} className="text-yellow-400" /> {course.lessons} Audits</span>
+                <span className="flex items-center gap-1.5"><Clock size={12} className="text-yellow-400" /> {course.duration}</span>
               </div>
               
               <div className="mt-auto pt-6 border-t border-white/5 space-y-6">
@@ -321,15 +345,15 @@ export default function Courses() {
                     <p className="text-2xl font-display font-black italic tracking-tighter">₦{course.price.toLocaleString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] uppercase font-black text-cyan-400 tracking-widest mb-1 italic">Max Potential</p>
-                    <p className="text-2xl font-display font-black text-cyan-400 italic tracking-tighter">₦{course.reward.toLocaleString()}</p>
+                    <p className="text-[9px] uppercase font-black text-yellow-400 tracking-widest mb-1 italic">Max Potential</p>
+                    <p className="text-2xl font-display font-black text-yellow-400 italic tracking-tighter">₦{course.reward.toLocaleString()}</p>
                   </div>
                 </div>
 
                 {isEnrolled(course.id) ? (
                   <button 
                     onClick={() => handleStartAudit(course)}
-                    className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-600 to-cyan-500"
+                    className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-yellow-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 bg-gradient-to-r from-yellow-600 to-yellow-400 text-slate-950"
                   >
                     Initiate Audit <ArrowRight size={18} />
                   </button>
@@ -338,14 +362,14 @@ export default function Courses() {
                     <button 
                       disabled={isEnrolling}
                       onClick={() => setEnrollConfirmation({ course, walletType: 'main' })}
-                      className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-50"
+                      className="w-full btn-primary py-5 uppercase font-black tracking-[0.2em] text-xs shadow-2xl shadow-yellow-500/20 active:scale-95 transition-all disabled:opacity-50"
                     >
                       {isEnrolling ? 'Configuring Node...' : 'Secure Access (Main)'}
                     </button>
                     <button 
                       disabled={isEnrolling}
                       onClick={() => setEnrollConfirmation({ course, walletType: 'bonus' })}
-                      className="w-full btn-outline py-5 uppercase font-black tracking-[0.2em] text-xs active:scale-95 transition-all text-white/40 border-white/5 hover:border-cyan-500/30 hover:text-white"
+                      className="w-full btn-outline py-5 uppercase font-black tracking-[0.2em] text-xs active:scale-95 transition-all text-white/40 border-white/5 hover:border-yellow-500/30 hover:text-white"
                     >
                       Redeem Bonus Yield
                     </button>
@@ -377,8 +401,8 @@ export default function Courses() {
               
               <div className="relative z-10 space-y-8">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                    <ShieldAlert className="text-cyan-400" size={28} />
+                  <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                    <ShieldAlert className="text-yellow-400" size={28} />
                   </div>
                   <div>
                     <h3 className="text-2xl font-display font-black uppercase tracking-tight italic">Secure Node?</h3>
@@ -397,7 +421,7 @@ export default function Courses() {
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-white/40">Authorized Wallet</span>
-                    <span className="font-bold text-cyan-400 uppercase">{enrollConfirmation.walletType} Wallet</span>
+                    <span className="font-bold text-yellow-400 uppercase">{enrollConfirmation.walletType} Wallet</span>
                   </div>
                 </div>
 
@@ -410,7 +434,7 @@ export default function Courses() {
                   </button>
                   <button 
                     onClick={handleEnroll}
-                    className="flex-1 btn-primary py-4 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20"
+                    className="flex-1 btn-primary py-4 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-yellow-500/20"
                   >
                     Secure Now
                   </button>
