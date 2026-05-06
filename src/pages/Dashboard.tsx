@@ -53,13 +53,26 @@ export default function Dashboard() {
     }
   ];
 
-  const activities = userData?.transactions?.slice(-5).reverse().map(t => ({
-    type: t.type,
-    title: t.title,
-    amount: t.amount,
-    time: new Date(t.time).toLocaleDateString() + ' ' + new Date(t.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    status: t.status
-  })) || [
+  const activities = userData?.transactions?.slice(-5).reverse().map(t => {
+    let dateStr = 'System';
+    try {
+      const timeVal = t.time || t.createdAt?.toDate?.()?.toISOString() || t.createdAt;
+      if (timeVal) {
+        const d = new Date(timeVal);
+        dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch (e) {
+      console.error("Date parse error", e);
+    }
+
+    return {
+      type: t.type,
+      title: t.title,
+      amount: t.amount,
+      time: dateStr,
+      status: t.status
+    };
+  }) || [
     { type: 'bonus', title: 'Registration Bonus', amount: 500, time: 'System', status: 'completed' },
   ];
 

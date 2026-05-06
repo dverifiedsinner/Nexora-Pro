@@ -8,8 +8,25 @@ interface Match {
   odds: { home: number; draw: number; away: number };
 }
 
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { 
+  doc, 
+  setDoc, 
+  addDoc, 
+  collection, 
+  serverTimestamp, 
+  runTransaction 
+} from 'firebase/firestore';
+import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
 const TEAM_POOL = ['MUN', 'CHE', 'LFC', 'MCI', 'ARS', 'TOT', 'RM', 'BAR', 'NAP', 'INT', 'BVB', 'BAY', 'PSG', 'JUV', 'ATM', 'MIL'];
 
@@ -31,7 +48,7 @@ const generateMatches = (): Match[] => {
 };
 
 export default function Games() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const [activeTab, setActiveTab] = useState<'prediction' | 'spin' | 'staking'>('prediction');
   const [stakingAmount, setStakingAmount] = useState<string>('5000');
   const [stakingDays, setStakingDays] = useState<number>(7);
@@ -48,7 +65,7 @@ export default function Games() {
   const handleQuantumStake = async () => {
     const sanitizedAmount = stakingAmount.replace(/[^0-9.]/g, '');
     const amount = Number(sanitizedAmount);
-    if (!userData || isNaN(amount)) {
+    if (!user || !userData || isNaN(amount)) {
       alert("Invalid stake amount.");
       return;
     }
@@ -60,38 +77,38 @@ export default function Games() {
 
     setIsStaking(true);
     try {
+      const userRef = doc(db, 'users', user.uid);
       const newBalances = {
         ...userData.balances,
         bonus: Number(userData.balances.bonus) - amount
       };
       
-      const newTransaction = {
-        type: 'staking',
+      const transactionData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
+        type: 'task', // Closest match: funding, withdrawal, bonus, referral, task, investment
         title: `QUANTUM STAKE (${stakingDays} DAYS)`,
         amount: -amount,
-        time: new Date().toISOString(),
-        status: 'LOCKED'
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        walletType: 'bonus'
       };
 
       const newStakes = Array.isArray((userData as any).activeStakes)
         ? [...(userData as any).activeStakes, { amount, days: stakingDays, startTime: new Date().toISOString() }]
         : [{ amount, days: stakingDays, startTime: new Date().toISOString() }];
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          balances: newBalances,
-          transactions: [...(userData.transactions || []), newTransaction],
-          activeStakes: newStakes
-        })
-        .eq('uid', userData.uid);
+      await setDoc(userRef, {
+        balances: newBalances,
+        activeStakes: newStakes
+      }, { merge: true });
 
-      if (error) throw error;
+      await addDoc(collection(db, 'transactions'), transactionData);
 
       alert(`₦${amount.toLocaleString()} successfully staked for ${stakingDays} days!`);
     } catch (err) {
-      console.error(err);
-      alert("Staking protocol failed.");
+      handleFirestoreError(err, OperationType.WRITE, 'users');
     } finally {
       setIsStaking(false);
     }
@@ -114,8 +131,8 @@ export default function Games() {
     const sanitizedAmount = stakeAmount.replace(/[^0-9.]/g, '');
     const amount = Number(sanitizedAmount);
     
-    if (!userData) {
-      alert("Authentication node missing.");
+    if (!user || !userData) {
+      alert("Authentication node missing. Please wait for synchronization.");
       return;
     }
     
@@ -137,33 +154,32 @@ export default function Games() {
     setIsProcessingStaking(true);
     try {
       console.log("Games: Initiating meta simulation...", { amount, selections: selectedMatches.length });
+      
+      const userRef = doc(db, 'users', user.uid);
       const newBalances = {
         ...userData.balances,
         main: Number(userData.balances.main) - amount
       };
-      const newTransaction = {
-        type: 'bet',
+
+      const transactionData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
+        type: 'task',
         title: 'VIRTUAL BET STAKE',
         amount: -amount,
-        time: new Date().toISOString(),
-        status: 'COMMITTED'
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        walletType: 'main'
       };
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          balances: newBalances,
-          transactions: [...(userData.transactions || []), newTransaction]
-        })
-        .eq('uid', userData.uid);
-
-      if (error) throw error;
+      await setDoc(userRef, { balances: newBalances }, { merge: true });
+      await addDoc(collection(db, 'transactions'), transactionData);
 
       setStakingStatus('processing');
       setTimer(30);
     } catch (err) {
-      console.error("Games Error:", err);
-      alert("Stake Protocol Error: Connection to neural network interrupted.");
+      handleFirestoreError(err, OperationType.WRITE, 'users');
     } finally {
       setIsProcessingStaking(false);
     }
@@ -179,7 +195,7 @@ export default function Games() {
     const sanitizedAmount = spinStake.replace(/[^0-9.]/g, '');
     const amount = Number(sanitizedAmount);
     
-    if (!userData || isNaN(amount)) {
+    if (!user || !userData || isNaN(amount)) {
       alert("Invalid spin stake.");
       return;
     }
@@ -191,33 +207,31 @@ export default function Games() {
 
     setIsProcessingStaking(true);
     try {
+      const userRef = doc(db, 'users', user.uid);
       const newBalances = {
         ...userData.balances,
         main: Number(userData.balances.main) - amount
       };
-      const newTransaction = {
-        type: 'spin',
+      
+      const transactionData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
+        type: 'task',
         title: 'NITRO SPIN STAKE',
         amount: -amount,
-        time: new Date().toISOString(),
-        status: 'COMMITTED'
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        walletType: 'main'
       };
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          balances: newBalances,
-          transactions: [...(userData.transactions || []), newTransaction]
-        })
-        .eq('uid', userData.uid);
-
-      if (error) throw error;
+      await setDoc(userRef, { balances: newBalances }, { merge: true });
+      await addDoc(collection(db, 'transactions'), transactionData);
 
       setStakingStatus('processing');
       setTimer(5); // Faster for spin
     } catch (err) {
-      console.error(err);
-      alert("Spin init failed.");
+      handleFirestoreError(err, OperationType.WRITE, 'users');
     } finally {
       setIsProcessingStaking(false);
     }
@@ -244,29 +258,30 @@ export default function Games() {
       setWinResult(won);
       setStakingStatus('result');
       
-      if (won && userData) {
+      if (won && user && userData) {
         const reward = activeTab === 'prediction' ? potentialWin : Number(spinStake) * 5;
         
         const processWin = async () => {
+          const userRef = doc(db, 'users', user.uid);
           const newBalances = {
             ...userData.balances,
             investment: Number(userData.balances.investment || 0) + reward
           };
-          const newTransaction = {
-            type: 'win',
+          
+          const transactionData = {
+            userId: user.uid,
+            userName: userData.displayName,
+            userEmail: user.email,
+            type: 'investment',
             title: activeTab === 'prediction' ? 'BET YIELD' : 'SPIN YIELD',
             amount: reward,
-            time: new Date().toISOString(),
-            status: 'GRANTED'
+            createdAt: serverTimestamp(),
+            status: 'pending',
+            walletType: 'investment'
           };
 
-          await supabase
-            .from('profiles')
-            .update({
-              balances: newBalances,
-              transactions: [...(userData.transactions || []), newTransaction]
-            })
-            .eq('uid', userData.uid);
+          await setDoc(userRef, { balances: newBalances }, { merge: true });
+          await addDoc(collection(db, 'transactions'), transactionData);
         };
 
         processWin().catch(console.error);

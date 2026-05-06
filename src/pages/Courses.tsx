@@ -1,9 +1,30 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Award, Clock, Star, Zap, ChevronRight, Search, Filter, AlertCircle, Check, ArrowRight, Loader2, ShieldAlert } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { 
+  collection, 
+  getDocs, 
+  setDoc, 
+  addDoc, 
+  doc, 
+  getDoc,
+  serverTimestamp,
+  query,
+  where,
+  runTransaction 
+} from 'firebase/firestore';
 import Quiz from '../components/Quiz';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
 const defaultCourses = [
   { 
@@ -66,7 +87,7 @@ const defaultCourses = [
 ];
 
 export default function Courses() {
-  const { userData, refreshUserData } = useAuth();
+  const { user, userData, refreshUserData } = useAuth();
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [isQuizzing, setIsQuizzing] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -90,15 +111,14 @@ export default function Courses() {
     const fetchCourses = async () => {
       try {
         console.log("Courses: Fetching node curriculum...");
-        const { data, error } = await supabase.from('courses').select('*');
+        const coursesRef = collection(db, 'courses');
+        const coursesSnap = await getDocs(coursesRef);
         
         if (!mounted) return;
 
-        if (error) {
-          console.error("Courses: Supabase error, falling back to local nodes:", error);
-          setCourses(defaultCourses);
-        } else if (data && data.length > 0) {
-          const merged = data.map((c: any) => {
+        if (!coursesSnap.empty) {
+          const fetchedCourses = coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const merged = fetchedCourses.map((c: any) => {
             const defaultCourse = defaultCourses.find(dc => dc.title === c.title);
             const coursePrice = Number(c.price || (defaultCourse?.price || 0));
             return {
@@ -134,7 +154,7 @@ export default function Courses() {
   const [enrollConfirmation, setEnrollConfirmation] = useState<{ course: any, walletType: 'main' | 'bonus' } | null>(null);
 
   const handleEnroll = async () => {
-    if (!userData || !enrollConfirmation || !refreshUserData) return;
+    if (!user || !userData || !enrollConfirmation || !refreshUserData) return;
     
     const { course, walletType } = enrollConfirmation;
     const currentBalance = Number((userData.balances as any)?.[walletType] || 0);
@@ -148,62 +168,79 @@ export default function Courses() {
     setIsEnrolling(true);
     setEnrollConfirmation(null);
     try {
-      const newBalances = {
-        ...userData.balances,
-        [walletType]: currentBalance - course.price
-      };
-      
-      const enrolledCourses = Array.isArray((userData as any).enrolledCourses) 
-        ? [...(userData as any).enrolledCourses, course.id]
-        : [course.id];
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await transaction.get(userRef);
+        
+        if (!userDoc.exists()) throw new Error("User node not found");
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          balances: newBalances,
-          enrolledCourses: enrolledCourses
-        })
-        .eq('uid', userData.uid);
+        const data = userDoc.data();
+        const balances = data.balances || {};
+        const enrolledCourses = data.enrolledCourses || [];
 
-      if (profileError) throw profileError;
-      
-      // Log transaction
-      const newTransaction = {
-        id: Math.random().toString(36).substring(7),
-        type: 'course_purchase',
-        title: `COURSE ACCESS: ${course.title}`,
-        amount: -course.price,
-        time: new Date().toISOString(),
-        status: 'SETTLED',
-        wallet: walletType
-      };
-
-      await supabase.from('profiles').update({
-        transactions: [...(userData.transactions || []), newTransaction]
-      }).eq('uid', userData.uid);
-
-      // Handle Referral Commission (25%)
-      if (userData.referredBy) {
-        const { data: referrer, error: refError } = await supabase
-          .from('profiles')
-          .select('balances, uid')
-          .eq('uid', userData.referredBy)
-          .single();
-
-        if (referrer && !refError) {
-          const commission = course.price * 0.25;
-          const newRefBalances = {
-            ...referrer.balances,
-            referral: Number(referrer.balances?.referral || 0) + commission
-          };
-          await supabase
-            .from('profiles')
-            .update({ balances: newRefBalances })
-            .eq('uid', userData.referredBy);
+        if ((balances[walletType] || 0) < course.price) {
+          throw new Error("Insufficient funds (Transactional verify)");
         }
-      }
 
-      await refreshUserData();
+        // Updating balances
+        const newBalances = {
+          ...balances,
+          [walletType]: balances[walletType] - course.price
+        };
+
+        transaction.update(userRef, {
+          balances: newBalances,
+          enrolledCourses: [...enrolledCourses, course.id]
+        });
+
+        // Log transaction
+        const txRef = doc(collection(db, 'transactions'));
+        transaction.set(txRef, {
+          userId: user.uid,
+          userName: userData.displayName,
+          userEmail: user.email,
+          type: 'task', // Closest type
+          title: `COURSE ACCESS: ${course.title}`,
+          amount: -course.price,
+          createdAt: serverTimestamp(),
+          status: 'pending', // Per rules
+          walletType: walletType
+        });
+
+        // Handle Referral Commission (25%)
+        if (data.referredBy) {
+          const referrerRef = doc(db, 'users', data.referredBy);
+          const referrerDoc = await transaction.get(referrerRef);
+          
+          if (referrerDoc.exists()) {
+            const refData = referrerDoc.data();
+            const refBalances = refData.balances || {};
+            const commission = course.price * 0.25;
+            
+            transaction.update(referrerRef, {
+              balances: {
+                ...refBalances,
+                referral: (refBalances.referral || 0) + commission
+              }
+            });
+            
+            // Log referral transaction
+            const refTxRef = doc(collection(db, 'transactions'));
+            transaction.set(refTxRef, {
+              userId: data.referredBy,
+              userName: refData.displayName || 'Nexus User',
+              userEmail: refData.email || '',
+              type: 'referral',
+              title: `REFERRAL COMM: ${userData.displayName}`,
+              amount: commission,
+              createdAt: serverTimestamp(),
+              status: 'pending',
+              walletType: 'referral'
+            });
+          }
+        }
+      });
+
       alert('Access authorized. Node synchronized.');
       
       // Automatically start the quiz after successful enrollment
@@ -211,8 +248,7 @@ export default function Courses() {
       setIsQuizzing(true);
       
     } catch (err: any) {
-      console.error('Enrollment error:', err);
-      alert(`Enrollment failed: ${err.message || 'System error'}`);
+      handleFirestoreError(err, OperationType.WRITE, 'users');
     } finally {
       setIsEnrolling(false);
     }
@@ -228,24 +264,33 @@ export default function Courses() {
   };
 
   const handleQuizComplete = async (finalEarning: number) => {
-    if (!userData || !selectedCourse) return;
+    if (!user || !userData || !selectedCourse) return;
 
     try {
+      const userRef = doc(db, 'users', user.uid);
       const newBalances = {
         ...userData.balances,
         investment: Number(userData.balances.investment || 0) + finalEarning
       };
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({ balances: newBalances })
-        .eq('uid', userData.uid);
+      const transactionData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
+        type: 'investment',
+        title: `QUIZ YIELD: ${selectedCourse.title}`,
+        amount: finalEarning,
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        walletType: 'investment'
+      };
 
-      if (error) throw error;
+      await setDoc(userRef, { balances: newBalances }, { merge: true });
+      await addDoc(collection(db, 'transactions'), transactionData);
+      
       await refreshUserData();
-      // Optionally remove from enrolled or mark as completed
     } catch (err) {
-      console.error(err);
+      handleFirestoreError(err, OperationType.WRITE, 'users');
     } finally {
       setIsQuizzing(false);
       setSelectedCourse(null);

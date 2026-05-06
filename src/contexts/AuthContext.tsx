@@ -1,22 +1,91 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { 
+  User, 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  updateProfile
+} from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  onSnapshot, 
+  serverTimestamp,
+  type Unsubscribe,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit 
+} from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+interface UserBalances {
+  main: number;
+  bonus: number;
+  referral: number;
+  investment: number;
+}
 
 interface UserData {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  balances: {
-    main: number;
-    bonus: number;
-    referral: number;
-    investment: number;
-  };
+  balances: UserBalances;
   referralCode: string;
   referredBy: string | null;
   isAdmin: boolean;
-  createdAt: string;
+  createdAt: any;
   transactions?: any[];
   enrolledCourses?: string[];
   profileUpdated?: boolean;
@@ -37,205 +106,136 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const userDataRef = React.useRef<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const fetchingRef = React.useRef<string | null>(null);
 
   useEffect(() => {
-    userDataRef.current = userData;
-  }, [userData]);
+    let unsubscribeUserDoc: Unsubscribe | null = null;
+    let unsubscribeTxs: Unsubscribe | null = null;
 
-  const refreshUserData = async () => {
-    if (user) {
-      await fetchUserData(user.id, true);
-    }
-  };
-
-  useEffect(() => {
-    let mounted = true;
-
-    // Safety timeout: if loading is still true after 10 seconds, force clear it
-    // to prevent complete screen lock, though this is a fallback.
-    const loadingTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('Auth initialization timeout triggered.');
-        setLoading(false);
-      }
-    }, 10000);
-
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-        
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        
-        if (currentUser) {
-          await fetchUserData(currentUser.id);
-        } else {
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Auth initialization error:', err);
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      
-      const currentUser = session?.user ?? null;
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
-      if (event === 'SIGNED_OUT') {
-        setUserData(null);
-        fetchingRef.current = null;
-        setLoading(false);
-        return;
+      if (unsubscribeUserDoc) {
+        unsubscribeUserDoc();
+        unsubscribeUserDoc = null;
+      }
+      if (unsubscribeTxs) {
+        unsubscribeTxs();
+        unsubscribeTxs = null;
       }
 
       if (currentUser) {
-        // Debounce/Prevent duplicate fetches
-        if (fetchingRef.current !== currentUser.id || !userDataRef.current) {
-          await fetchUserData(currentUser.id);
+        setLoading(true);
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (!userSnap.exists()) {
+            // Create initial profile
+            const referredBy = localStorage.getItem('referredBy');
+            const newUserData: UserData = {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+              photoURL: currentUser.photoURL,
+              balances: {
+                main: 0,
+                bonus: 1000,
+                referral: 0,
+                investment: 0
+              },
+              referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+              referredBy: referredBy,
+              isAdmin: false,
+              createdAt: serverTimestamp(),
+            };
+
+            await setDoc(userRef, newUserData);
+            localStorage.removeItem('referredBy');
+
+            // Handle initial admin setup for denacchy@gmail.com
+            if (currentUser.email === 'denacchy@gmail.com') {
+              await setDoc(doc(db, 'admins', currentUser.uid), { email: currentUser.email });
+              await setDoc(userRef, { isAdmin: true }, { merge: true });
+            }
+          }
+
+          // Real-time listener for profile
+          unsubscribeUserDoc = onSnapshot(userRef, (userDoc) => {
+            if (userDoc.exists()) {
+              const uData = userDoc.data() as UserData;
+              setUserData(prev => prev ? { ...uData, transactions: prev.transactions } : { ...uData, transactions: [] });
+            }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
+          });
+
+          // Real-time listener for transactions
+          const txQuery = query(
+            collection(db, 'transactions'),
+            where('userId', '==', currentUser.uid),
+            orderBy('createdAt', 'desc'),
+            limit(20)
+          );
+
+          unsubscribeTxs = onSnapshot(txQuery, (txSnap) => {
+            const txs = txSnap.docs.map(t => ({
+              ...t.data(),
+              id: t.id,
+              time: t.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+            }));
+            setUserData(prev => prev ? { ...prev, transactions: txs } : null);
+          }, (error) => {
+            console.error("TX Fetch Error:", error);
+          });
+
+        } catch (error) {
+          console.error('Error fetching/creating user profile:', error);
+        } finally {
+          setLoading(false);
         }
       } else {
         setUserData(null);
-        fetchingRef.current = null;
         setLoading(false);
       }
     });
 
     return () => {
-      mounted = false;
-      clearTimeout(loadingTimeout);
-      subscription.unsubscribe();
+      unsubscribeAuth();
+      if (unsubscribeUserDoc) unsubscribeUserDoc();
+      if (unsubscribeTxs) unsubscribeTxs();
     };
-  }, []); // Dependencies empty to run once on mount
+  }, []);
 
-  const fetchUserData = async (uid: string, force = false) => {
-    // Return if already fetching THIS specific UID, unless forced
-    if (fetchingRef.current === uid && !force) return;
-    
-    fetchingRef.current = uid;
-    
-    // Only set global loading if we don't have data yet and not forcing
-    if (!userDataRef.current && !force) {
-      setLoading(true);
-    }
-    
-    try {
-      console.log('Fetching user data for:', uid);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('uid', uid)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Supabase profile fetch error:', error);
+  const refreshUserData = async () => {
+    if (user) {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        setUserData(userSnap.data() as UserData);
       }
-
-      if (!data) {
-        console.log('No profile found, checking session for creation...');
-        const { data: { session } } = await supabase.auth.getSession();
-        const currentUser = session?.user;
-        
-        if (currentUser && currentUser.id === uid) {
-          const referredBy = localStorage.getItem('referredBy');
-          
-          const newUser = {
-            uid: currentUser.id,
-            email: currentUser.email ?? null,
-            displayName: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User',
-            photoURL: currentUser.user_metadata?.avatar_url || null,
-            balances: {
-              main: 0,
-              bonus: 500,
-              referral: 0,
-              investment: 0
-            },
-            referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-            referredBy: referredBy,
-            isAdmin: false,
-            createdAt: new Date().toISOString(),
-            transactions: [],
-            enrolledCourses: []
-          };
-
-          console.log('Creating new profile node...');
-          const { data: createdData, error: createError } = await supabase
-            .from('profiles')
-            .upsert([newUser], { onConflict: 'uid' })
-            .select()
-            .maybeSingle();
-
-          if (createError) {
-            console.error('Profile creation error:', createError);
-          } else if (createdData) {
-            setUserData(createdData as UserData);
-          }
-          localStorage.removeItem('referredBy');
-        }
-      } else {
-        // Special case: Promote specific user to admin if they are the owner/developer
-        if (data.email === 'denacchy@gmail.com' && !data.isAdmin) {
-          const { data: updatedData, error: updateError } = await supabase
-            .from('profiles')
-            .update({ isAdmin: true })
-            .eq('uid', uid)
-            .select()
-            .maybeSingle();
-          
-          setUserData((updatedData || data) as UserData);
-        } else {
-          setUserData(data as UserData);
-        }
-      }
-    } catch (err) {
-      console.error('Critical auth flow error:', err);
-    } finally {
-      if (!force) setLoading(false);
-      fetchingRef.current = null;
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signUp = async (email: string, password: string, username: string) => {
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: username,
-        }
-      }
-    });
-
-    if (authError) {
-      if (authError.message.includes('rate limit')) {
-        throw new Error('Action blocked by security protocols. Please wait 15 minutes before the next attempt or use a different network node.');
-      }
-      throw authError;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: username });
+    } catch (error) {
+      throw error;
     }
-    
-    // We don't manually insert the profile here anymore.
-    // fetchUserData handles it when onAuthStateChange fires.
-    // This avoids double-inserts and race conditions.
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await firebaseSignOut(auth);
   };
 
   return (

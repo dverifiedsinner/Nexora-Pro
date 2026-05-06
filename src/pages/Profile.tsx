@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Mail, Phone, Building2, CreditCard, Save, ShieldCheck, Zap, ArrowRight, UserCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
 export default function Profile() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     displayName: '',
@@ -29,22 +39,18 @@ export default function Profile() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userData) return;
+    if (!user || !userData) return;
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          ...formData,
-          profileUpdated: true
-        })
-        .eq('uid', userData.uid);
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        ...formData,
+        profileUpdated: true
+      });
       
-      if (error) throw error;
       alert('Node identity synchronized successfully.');
     } catch (err) {
-      console.error(err);
-      alert('Synchronization failed.');
+      handleFirestoreError(err, OperationType.WRITE, 'users');
     } finally {
       setIsSaving(false);
     }

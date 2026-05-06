@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Users, Gift, Share2, Copy, Check, TrendingUp, Award, Zap, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function Referrals() {
   const { userData } = useAuth();
@@ -26,13 +27,13 @@ export default function Referrals() {
         return;
       }
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('displayName, email, createdAt, balances')
-          .eq('referredBy', userData.uid);
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('referredBy', '==', userData.uid));
+        const querySnapshot = await getDocs(q);
         
         if (!mounted) return;
-        if (data) setReferrals(data);
+        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setReferrals(data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -201,7 +202,9 @@ export default function Referrals() {
                            <span className="font-bold text-white/80 group-hover:text-white transition-all">{row.displayName || 'Anonymous'}</span>
                         </div>
                       </td>
-                      <td className="px-8 py-6 text-center text-xs text-white/30 font-medium">{new Date(row.createdAt).toLocaleDateString()}</td>
+                      <td className="px-8 py-6 text-center text-xs text-white/30 font-medium">
+  {row.createdAt?.toDate ? row.createdAt.toDate().toLocaleDateString() : (row.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'N/A')}
+</td>
                       <td className="px-8 py-6 text-center">
                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-yellow-500/10 text-yellow-400`}>
                           Active

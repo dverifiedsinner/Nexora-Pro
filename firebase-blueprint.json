@@ -136,6 +136,10 @@
     "/withdrawals/{withdrawalId}": {
       "schema": "WithdrawalRequest",
       "description": "Withdrawal queue for admin approval."
+    },
+    "/settings/{settingId}": {
+      "schema": "object",
+      "description": "System settings and configuration."
     }
   }
 }

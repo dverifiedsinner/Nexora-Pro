@@ -18,9 +18,34 @@ import {
   Loader2
 } from 'lucide-react';
 
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  addDoc, 
+  deleteDoc,
+  serverTimestamp,
+  runTransaction 
+} from 'firebase/firestore';
+import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
 import { generateCourseContent } from '../services/geminiService';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
 export default function Admin() {
   const { signOut } = useAuth();
@@ -56,60 +81,37 @@ export default function Admin() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Admin: Fetching network data...');
-        // Fetch Users
-        const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').order('createdAt', { ascending: false });
+        console.log('Admin: Fetching network data from Firebase...');
         
-        if (usersError) {
-          console.error('Admin: Users fetch error:', usersError);
-        }
+        // Fetch Users
+        const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
+        const usersList = usersSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+        setUsers(usersList);
 
-        if (usersData) {
-          console.log(`Admin: Loaded ${usersData.length} users`);
-          setUsers(usersData);
-          
-          // Derive Withdrawals & Recharges from loaded users
-          const allWithdrawals: any[] = [];
-          const allRecharges: any[] = [];
-          
-          usersData.forEach(u => {
-            if (u.transactions && Array.isArray(u.transactions)) {
-              u.transactions.forEach((t: any) => {
-                const commonData = { ...t, userId: u.uid, userName: u.displayName, userEmail: u.email };
-                if (t.type === 'withdrawal' && t.status === 'PENDING') {
-                   allWithdrawals.push(commonData);
-                }
-                if (t.type === 'recharge' && (t.status === 'PENDING' || t.status === 'PENDING_VERIFICATION')) {
-                   allRecharges.push(commonData);
-                }
-              });
-            }
-          });
-          setWithdrawals(allWithdrawals);
-          setRecharges(allRecharges);
-        }
+        // Fetch Pending Recharges (Transactions type funding, status pending)
+        const rechargesSnap = await getDocs(query(collection(db, 'transactions'), where('type', '==', 'funding'), where('status', '==', 'pending')));
+        setRecharges(rechargesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        // Fetch Pending Withdrawals
+        const withdrawalsSnap = await getDocs(query(collection(db, 'withdrawals'), where('status', '==', 'pending')));
+        setWithdrawals(withdrawalsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
         // Fetch System Config
-        const { data: configData } = await supabase.from('settings').select('*').eq('id', 'system').maybeSingle();
-        if (configData) setSystemConfig(configData);
+        const configSnap = await getDoc(doc(db, 'settings', 'system'));
+        if (configSnap.exists()) setSystemConfig(configSnap.data() as any);
 
         // Fetch Tasks
-        const { data: tasksData } = await supabase.from('tasks').select('*');
-        if (tasksData && tasksData.length > 0) {
-          setTasks(tasksData);
+        const tasksSnap = await getDocs(collection(db, 'tasks'));
+        if (!tasksSnap.empty) {
+          setTasks(tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         }
 
         // Fetch Courses
-        const { data: coursesData } = await supabase.from('courses').select('*').order('createdAt', { ascending: false });
-        if (coursesData && coursesData.length > 0) {
-          setCourseList(coursesData);
-        } else {
-          setCourseList([
-            { id: '1', title: 'Digital Marketing Mastery', price: 5000, roi: '5X', enrolled: 120, status: 'Active' },
-            { id: '2', title: 'Crypto Trading Alpha', price: 12000, roi: '5X', enrolled: 85, status: 'Active' },
-            { id: '3', title: 'UI Design Lab', price: 7000, roi: '5X', enrolled: 45, status: 'Standby' },
-          ]);
+        const coursesSnap = await getDocs(query(collection(db, 'courses'), orderBy('createdAt', 'desc')));
+        if (!coursesSnap.empty) {
+          setCourseList(coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
         }
+        
       } catch (err) {
         console.error('Admin: Critical fetch error:', err);
       }
@@ -120,8 +122,7 @@ export default function Admin() {
   const handleUpdateConfig = async () => {
     setIsUpdating(true);
     try {
-      const { error } = await supabase.from('settings').upsert({ id: 'system', ...systemConfig });
-      if (error) throw error;
+      await setDoc(doc(db, 'settings', 'system'), systemConfig);
       alert('Global constants synchronized.');
     } catch (err) {
       console.error(err);
@@ -133,8 +134,7 @@ export default function Admin() {
 
   const handleUpdateCourse = async (id: string, updates: any) => {
     try {
-      const { error } = await supabase.from('courses').update(updates).eq('id', id);
-      if (error) throw error;
+      await updateDoc(doc(db, 'courses', id), updates);
       setCourseList(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
     } catch (err) {
       console.error(err);
@@ -149,10 +149,8 @@ export default function Admin() {
 
     setIsGeneratingCourse(true);
     try {
-      // 1. Generate AI Content
       const aiContent = await generateCourseContent(courseForm.title);
       
-      // 2. Prepare Course Object
       const newCourse = {
         title: aiContent.title,
         article: aiContent.article,
@@ -166,14 +164,16 @@ export default function Admin() {
         members: 0,
         image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800',
         status: 'Active',
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
       };
 
-      // 3. Save to DB
-      const { data, error } = await supabase.from('courses').insert([newCourse]).select().single();
-      if (error) throw error;
+      const docRef = await addDoc(collection(db, 'courses'), newCourse);
+      const savedDoc = await getDoc(docRef);
       
-      setCourseList(prev => [data, ...prev]);
+      if (savedDoc.exists()) {
+        setCourseList(prev => [{ id: savedDoc.id, ...savedDoc.data() } as any, ...prev]);
+      }
+      
       setCourseForm({ title: '', price: '5000' });
       setIsAddingCourse(false);
       alert('AI-Generated Course deployed to network.');
@@ -189,103 +189,93 @@ export default function Admin() {
   const deleteCourse = async (id: string) => {
     if(!confirm("Terminate this curriculum node?")) return;
     try {
-      const { error } = await supabase.from('courses').delete().eq('id', id);
-      if (error) throw error;
+      await deleteDoc(doc(db, 'courses', id));
       setCourseList(prev => prev.filter(c => c.id !== id));
     } catch (err) { console.error(err); }
   }
 
   const handleUpdateUser = async (uid: string, updates: any) => {
     try {
-      const { error } = await supabase.from('profiles').update(updates).eq('uid', uid);
-      if (error) throw error;
+      await updateDoc(doc(db, 'users', uid), updates);
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, ...updates } : u));
       if (selectedUser?.uid === uid) {
         setSelectedUser({ ...selectedUser, ...updates });
       }
       alert('Network node updated.');
-    } catch (err) {
-      console.error(err);
-      alert('Update failed');
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.WRITE, 'users');
     }
   };
 
   const approveWithdrawal = async (withdrawal: any) => {
     try {
-      const user = users.find(u => u.uid === withdrawal.userId);
-      if (!user) return;
-
-      const updatedTransactions = user.transactions.map((t: any) => {
-        if (t.time === withdrawal.time && t.type === 'withdrawal') {
-          return { ...t, status: 'DISBURSED' };
+      await runTransaction(db, async (transaction) => {
+        const withdrawalRef = doc(db, 'withdrawals', withdrawal.id);
+        const userRef = doc(db, 'users', withdrawal.userId);
+        
+        transaction.update(withdrawalRef, { status: 'approved', updatedAt: serverTimestamp() });
+        
+        // Also update the associated transaction in transactions collection if possible
+        // We'll search by userId and a unique identifier if we had one, but for now we look for pending withdrawals of this amount
+        const txQuery = query(
+          collection(db, 'transactions'), 
+          where('userId', '==', withdrawal.userId),
+          where('type', '==', 'withdrawal'),
+          where('status', '==', 'pending'),
+          limit(1)
+        );
+        const txSnap = await getDocs(txQuery);
+        if (!txSnap.empty) {
+          transaction.update(doc(db, 'transactions', txSnap.docs[0].id), { status: 'settled' });
         }
-        return t;
       });
 
-      const { error } = await supabase.from('profiles').update({ transactions: updatedTransactions }).eq('uid', user.uid);
-      if (error) throw error;
-      
-      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions } : u));
-      setWithdrawals(prev => prev.filter(w => w.time !== withdrawal.time));
+      setWithdrawals(prev => prev.filter(w => w.id !== withdrawal.id));
       alert('Fund disbursement verified.');
     } catch (err) {
       console.error(err);
+      alert('Approval failed');
     }
   };
 
   const approveRecharge = async (recharge: any) => {
     try {
-      const user = users.find(u => u.uid === recharge.userId);
-      if (!user) return;
+      await runTransaction(db, async (ts) => {
+        const txRef = doc(db, 'transactions', recharge.id);
+        const userRef = doc(db, 'users', recharge.userId);
+        const userDoc = await ts.get(userRef);
+        
+        if (!userDoc.exists()) throw new Error("User not found");
+        
+        const userData = userDoc.data();
+        const balances = userData.balances || {};
+        const amount = Number(recharge.amount);
 
-      const updatedTransactions = user.transactions.map((t: any) => {
-        if (t.time === recharge.time && t.type === 'recharge') {
-          return { ...t, status: 'VERIFIED' };
-        }
-        return t;
+        ts.update(txRef, { status: 'settled', updatedAt: serverTimestamp() });
+        ts.update(userRef, {
+          balances: {
+            ...balances,
+            main: (balances.main || 0) + amount
+          }
+        });
       });
 
-      const newBalances = {
-        ...user.balances,
-        main: (user.balances.main || 0) + recharge.amount
-      };
-
-      const { error } = await supabase.from('profiles').update({ 
-        transactions: updatedTransactions,
-        balances: newBalances
-      }).eq('uid', user.uid);
-      
-      if (error) throw error;
-      
-      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions, balances: newBalances } : u));
-      setRecharges(prev => prev.filter(r => r.time !== recharge.time));
+      setRecharges(prev => prev.filter(r => r.id !== recharge.id));
       alert('Node recharge verified and balance updated.');
     } catch (err) {
       console.error(err);
+      alert('Verification failed');
     }
   };
 
   const rejectRecharge = async (recharge: any) => {
     if (!confirm("Reject this inflow request?")) return;
     try {
-      const user = users.find(u => u.uid === recharge.userId);
-      if (!user) return;
-
-      const updatedTransactions = user.transactions.map((t: any) => {
-        if (t.time === recharge.time && t.type === 'recharge') {
-          return { ...t, status: 'REJECTED' };
-        }
-        return t;
+      await updateDoc(doc(db, 'transactions', recharge.id), { 
+        status: 'rejected', 
+        updatedAt: serverTimestamp() 
       });
-
-      const { error } = await supabase.from('profiles').update({ 
-        transactions: updatedTransactions
-      }).eq('uid', user.uid);
-      
-      if (error) throw error;
-      
-      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions } : u));
-      setRecharges(prev => prev.filter(r => r.time !== recharge.time));
+      setRecharges(prev => prev.filter(r => r.id !== recharge.id));
       alert('Inflow request rejected.');
     } catch (err) {
       console.error(err);
@@ -295,40 +285,50 @@ export default function Admin() {
   const rejectWithdrawal = async (withdrawal: any) => {
     if (!confirm("Deny this vault authorization? Funds will be returned to user balance.")) return;
     try {
-      const user = users.find(u => u.uid === withdrawal.userId);
-      if (!user) return;
+      await runTransaction(db, async (ts) => {
+        const withdrawalRef = doc(db, 'withdrawals', withdrawal.id);
+        const userRef = doc(db, 'users', withdrawal.userId);
+        const userDoc = await ts.get(userRef);
+        
+        if (!userDoc.exists()) throw new Error("User not found");
+        
+        const userData = userDoc.data();
+        const balances = userData.balances || {};
+        const amount = Math.abs(Number(withdrawal.amount));
 
-      const updatedTransactions = user.transactions.map((t: any) => {
-        if (t.time === withdrawal.time && t.type === 'withdrawal') {
-          return { ...t, status: 'DENIED' };
+        ts.update(withdrawalRef, { status: 'rejected', updatedAt: serverTimestamp() });
+        ts.update(userRef, {
+          balances: {
+            ...balances,
+            [withdrawal.walletType || 'main']: (balances[withdrawal.walletType || 'main'] || 0) + amount
+          }
+        });
+
+        // Also update the associated transaction
+        const txQuery = query(
+          collection(db, 'transactions'), 
+          where('userId', '==', withdrawal.userId),
+          where('type', '==', 'withdrawal'),
+          where('status', '==', 'pending'),
+          limit(1)
+        );
+        const txSnap = await getDocs(txQuery);
+        if (!txSnap.empty) {
+          ts.update(doc(db, 'transactions', txSnap.docs[0].id), { status: 'rejected' });
         }
-        return t;
       });
 
-      const newBalances = {
-        ...user.balances,
-        main: (user.balances.main || 0) + Math.abs(withdrawal.amount)
-      };
-
-      const { error } = await supabase.from('profiles').update({ 
-        transactions: updatedTransactions,
-        balances: newBalances
-      }).eq('uid', user.uid);
-      
-      if (error) throw error;
-      
-      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, transactions: updatedTransactions, balances: newBalances } : u));
-      setWithdrawals(prev => prev.filter(w => w.time !== withdrawal.time));
+      setWithdrawals(prev => prev.filter(w => w.id !== withdrawal.id));
       alert('Withdrawal denied and funds restored to user.');
     } catch (err) {
       console.error(err);
+      alert('Rejection failed');
     }
   };
 
   const handleUpdateTask = async (id: string, updates: any) => {
     try {
-      const { error } = await supabase.from('tasks').update(updates).eq('id', id);
-      if (error) throw error;
+      await updateDoc(doc(db, 'tasks', id), updates);
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
     } catch (err) {
       console.error(err);
@@ -349,11 +349,13 @@ export default function Admin() {
         type: taskForm.type,
         category: taskForm.category,
         link: taskForm.link || '#',
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
       };
-      const { data, error } = await supabase.from('tasks').insert([newTask]).select().single();
-      if (error) throw error;
-      setTasks(prev => [data, ...prev]);
+      const docRef = await addDoc(collection(db, 'tasks'), newTask);
+      const savedDoc = await getDoc(docRef);
+      if (savedDoc.exists()) {
+        setTasks(prev => [{ id: savedDoc.id, ...savedDoc.data() }, ...prev]);
+      }
       setTaskForm({ title: '', reward: '250', type: 'daily', link: '', desc: '', category: 'Social' });
       setIsAddingTask(false);
       alert('Operational task broadcasted.');
@@ -366,8 +368,7 @@ export default function Admin() {
   const deleteTask = async (id: string) => {
     if(!confirm("Erase this task node?")) return;
     try {
-      const { error } = await supabase.from('tasks').delete().eq('id', id);
-      if (error) throw error;
+      await deleteDoc(doc(db, 'tasks', id));
       setTasks(prev => prev.filter(t => t.id !== id));
     } catch (err) { console.error(err); }
   }
@@ -378,40 +379,55 @@ export default function Admin() {
     (u.uid || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAdjustBalance = () => {
+  const handleAdjustBalance = async () => {
     if (!selectedUser || !balanceAdjustment.amount) return;
     
     const amount = Number(balanceAdjustment.amount);
     if (isNaN(amount)) return;
 
-    const currentBalances = { ...selectedUser.balances };
     const wallet = balanceAdjustment.wallet;
     
-    if (balanceAdjustment.type === 'credit') {
-      currentBalances[wallet] = (currentBalances[wallet] || 0) + amount;
-    } else {
-      currentBalances[wallet] = Math.max(0, (currentBalances[wallet] || 0) - amount);
+    try {
+      await runTransaction(db, async (ts) => {
+        const userRef = doc(db, 'users', selectedUser.uid);
+        const userDoc = await ts.get(userRef);
+        if (!userDoc.exists()) throw new Error("Node not found");
+        
+        const currentBalances = userDoc.data().balances || {};
+        let newAmount = 0;
+        
+        if (balanceAdjustment.type === 'credit') {
+          newAmount = (currentBalances[wallet] || 0) + amount;
+        } else {
+          newAmount = Math.max(0, (currentBalances[wallet] || 0) - amount);
+        }
+
+        const newBalances = { ...currentBalances, [wallet]: newAmount };
+        ts.update(userRef, { balances: newBalances });
+
+        // Create transaction record
+        const txRef = doc(collection(db, 'transactions'));
+        ts.set(txRef, {
+          userId: selectedUser.uid,
+          userName: selectedUser.displayName || 'Nexus User',
+          userEmail: selectedUser.email,
+          type: balanceAdjustment.type === 'credit' ? 'internal' : 'task',
+          title: `${balanceAdjustment.type === 'credit' ? 'CREDIT' : 'DEBIT'} BY ADMIN`,
+          amount: balanceAdjustment.type === 'credit' ? amount : -amount,
+          createdAt: serverTimestamp(),
+          status: 'settled',
+          walletType: wallet
+        });
+      });
+
+      alert(`${balanceAdjustment.type === 'credit' ? 'Credited' : 'Debited'} ₦${amount.toLocaleString()} ${balanceAdjustment.type === 'credit' ? 'to' : 'from'} ${wallet} wallet.`);
+      setBalanceAdjustment({ ...balanceAdjustment, amount: '' });
+      // Refresh local users list
+      setUsers(prev => prev.map(u => u.uid === selectedUser.uid ? { ...u, balances: { ...u.balances, [wallet]: balanceAdjustment.type === 'credit' ? (u.balances?.[wallet] || 0) + amount : Math.max(0, (u.balances?.[wallet] || 0) - amount) } } : u));
+    } catch (err) {
+      console.error(err);
+      alert('Balance adjustment failed');
     }
-
-    const transaction = {
-      type: balanceAdjustment.type === 'credit' ? 'system_credit' : 'system_debit',
-      title: `${balanceAdjustment.type === 'credit' ? 'CREDIT' : 'DEBIT'} BY ADMIN`,
-      amount: balanceAdjustment.type === 'credit' ? amount : -amount,
-      time: new Date().toISOString(),
-      status: 'SETTLED',
-      wallet: wallet
-    };
-
-    const updatedTransactions = [...(selectedUser.transactions || []), transaction];
-
-    setSelectedUser({
-      ...selectedUser,
-      balances: currentBalances,
-      transactions: updatedTransactions
-    });
-
-    setBalanceAdjustment({ ...balanceAdjustment, amount: '' });
-    alert(`${balanceAdjustment.type === 'credit' ? 'Credited' : 'Debited'} ₦${amount.toLocaleString()} ${balanceAdjustment.type === 'credit' ? 'to' : 'from'} ${wallet} wallet.`);
   };
 
   const stats = [
@@ -952,7 +968,7 @@ export default function Admin() {
                           ₦{Number(r.amount || 0).toLocaleString()}
                         </td>
                         <td className="px-8 py-6 text-center text-white/40">
-                          {new Date(r.time).toLocaleString()}
+                          {r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : (r.createdAt ? new Date(r.createdAt).toLocaleString() : 'N/A')}
                         </td>
                         <td className="px-8 py-6">
                           <div className="flex justify-end gap-3 items-center">
@@ -1023,7 +1039,7 @@ export default function Admin() {
                           ₦{Math.abs(w.amount || 0).toLocaleString()}
                         </td>
                         <td className="px-8 py-6 text-center text-white/40">
-                          {new Date(w.time).toLocaleString()}
+                          {w.createdAt?.toDate ? w.createdAt.toDate().toLocaleString() : (w.createdAt ? new Date(w.createdAt).toLocaleString() : 'N/A')}
                         </td>
                         <td className="px-8 py-6">
                           <div className="flex justify-end gap-3">

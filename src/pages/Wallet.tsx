@@ -13,13 +13,23 @@ import {
   Wifi,
   Award
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, doc, setDoc } from 'firebase/firestore';
 
-import { supabase } from '../lib/supabase';
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
 export default function Wallet() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const [activeTab, setActiveTab] = React.useState<'recharge' | 'withdraw' | 'conversion'>('recharge');
+  const [transactions, setTransactions] = React.useState<any[]>([]);
   const [conversionType, setConversionType] = React.useState<'airtime' | 'data'>('airtime');
   const [network, setNetwork] = React.useState<string>('MTN');
   
@@ -36,12 +46,29 @@ export default function Wallet() {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [proofImage, setProofImage] = React.useState<string | null>(null);
 
+  // Fetch transactions
+  React.useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTransactions(txs);
+    }, (error) => {
+      console.error('Transactions fetch error:', error);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const handleRecharge = async () => {
     // Sanitize input: remove commas and other non-numeric characters except decimals
     const sanitizedAmount = rechargeAmount.replace(/[^0-9.]/g, '');
     const amount = Number(sanitizedAmount);
     
-    if (!userData) {
+    if (!user || !userData) {
       alert("Authentication node missing. Please re-synchronize.");
       return;
     }
@@ -60,29 +87,25 @@ export default function Wallet() {
     try {
       console.log("Wallet: Porting recharge request...", { amount, proofProvided: !!proofImage });
       const newTransaction = {
-        type: 'recharge',
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
+        type: 'funding',
         title: 'NODE RECHARGE',
         amount: amount,
-        time: new Date().toISOString(),
-        status: 'PENDING_VERIFICATION',
-        proof: proofImage
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        proof: proofImage,
+        walletType: 'main'
       };
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          transactions: [...(userData.transactions || []), newTransaction]
-        })
-        .eq('uid', userData.uid);
-
-      if (error) throw error;
+      await addDoc(collection(db, 'transactions'), newTransaction);
 
       setRechargeAmount('');
       setProofImage(null);
       alert(`Network success: Proof submitted for ₦${amount.toLocaleString()}. Our audit engine will verify the node synchronicity within 30 minutes.`);
     } catch (err) {
-      console.error("Wallet Error:", err);
-      alert('Recharge submission failed. Check your network link.');
+      handleFirestoreError(err, OperationType.CREATE, 'transactions');
     } finally {
       setIsProcessing(false);
     }
@@ -103,7 +126,7 @@ export default function Wallet() {
     const sanitizedAmount = withdrawAmount.replace(/[^0-9.]/g, '');
     const amount = Number(sanitizedAmount);
     
-    if (!userData || isNaN(amount) || amount <= 0) {
+    if (!user || !userData || isNaN(amount) || amount <= 0) {
       alert("Please enter a valid withdrawal amount.");
       return;
     }
@@ -116,40 +139,57 @@ export default function Wallet() {
 
     setIsProcessing(true);
     try {
+      const userRef = doc(db, 'users', user.uid);
       const newBalances = {
         ...userData.balances,
         [withdrawWallet]: balance - amount
       };
-      const newTransaction = {
+
+      const withdrawalData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
+        amount: amount,
+        method: 'bank_transfer',
+        details: {
+          accountNumber: withdrawAccount,
+          bankName: withdrawBank,
+          wallet: withdrawWallet
+        },
+        status: 'pending',
+        createdAt: serverTimestamp()
+      };
+
+      const transactionData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
         type: 'withdrawal',
         title: 'LIQUIDATION REQUEST',
         amount: -amount,
-        time: new Date().toISOString(),
-        status: 'PENDING'
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        walletType: withdrawWallet,
+        description: `Withdrawal request to ${withdrawBank}`
       };
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          balances: newBalances,
-          transactions: [...(userData.transactions || []), newTransaction]
-        })
-        .eq('uid', userData.uid);
-
-      if (error) throw error;
+      // In Firestore, we should use a writeBatch or multiple await calls
+      // Since rules allow user to update their balances:
+      await setDoc(userRef, { balances: newBalances }, { merge: true });
+      await addDoc(collection(db, 'withdrawals'), withdrawalData);
+      await addDoc(collection(db, 'transactions'), transactionData);
 
       setWithdrawAmount('');
-      alert("Withdrawal request initiated successfully.");
+      alert("Withdrawal request initiated successfully. Funds have been locked for verification.");
     } catch (err) {
-      console.error(err);
-      alert('Liquidation failed.');
+      handleFirestoreError(err, OperationType.WRITE, 'withdrawals');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleConvert = async () => {
-    if (!userData || !convertPhone) {
+    if (!user || !userData || !convertPhone) {
       alert("Please provide a valid receiver link.");
       return;
     }
@@ -169,32 +209,31 @@ export default function Wallet() {
 
     setIsProcessing(true);
     try {
+      const userRef = doc(db, 'users', user.uid);
       const newBalances = {
         ...userData.balances,
         [convertWallet]: balance - finalAmount
       };
-      const newTransaction = {
-        type: 'conversion',
+      
+      const transactionData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
+        type: 'task', // Closest match in Transaction enum: funding, withdrawal, bonus, referral, task, investment
         title: `${conversionType.toUpperCase()} SWAP`,
         amount: -finalAmount,
-        time: new Date().toISOString(),
-        status: 'COMPLETED'
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        walletType: convertWallet,
+        description: `${conversionType === 'airtime' ? 'Airtime' : 'Data'} sent to ${convertPhone}`
       };
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          balances: newBalances,
-          transactions: [...(userData.transactions || []), newTransaction]
-        })
-        .eq('uid', userData.uid);
+      await setDoc(userRef, { balances: newBalances }, { merge: true });
+      await addDoc(collection(db, 'transactions'), transactionData);
 
-      if (error) throw error;
-
-      alert(`${conversionType === 'airtime' ? 'Airtime' : 'Data'} sent successfully to ${convertPhone}`);
+      alert(`Conversion protocol initiated. ${conversionType === 'airtime' ? 'Airtime' : 'Data'} will be dispatched to ${convertPhone} after verification.`);
     } catch (err) {
-      console.error(err);
-      alert('Conversion failed.');
+      handleFirestoreError(err, OperationType.WRITE, 'conversion');
     } finally {
       setIsProcessing(false);
     }
@@ -632,9 +671,9 @@ export default function Wallet() {
               <button className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-yellow-400 transition-all">DEEP AUDIT</button>
             </div>
             <div className="glass-card p-2 md:p-3 space-y-1.5 md:space-y-2 border-white/5 shadow-2xl">
-              {(userData as any)?.transactions?.length > 0 ? (
-                [...(userData as any).transactions].reverse().map((t: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between p-4 md:p-6 hover:bg-white/[0.03] rounded-2xl md:rounded-[2rem] transition-all cursor-pointer group active:scale-[0.98] border border-transparent hover:border-white/5">
+              {transactions.length > 0 ? (
+                transactions.map((t: any, i: number) => (
+                  <div key={t.id || i} className="flex items-center justify-between p-4 md:p-6 hover:bg-white/[0.03] rounded-2xl md:rounded-[2rem] transition-all cursor-pointer group active:scale-[0.98] border border-transparent hover:border-white/5">
                     <div className="flex gap-3 md:gap-5 items-center">
                       <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-all ${t.amount > 0 ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-500'}`}>
                          {t.amount > 0 ? <ArrowDownLeft size={18} className="md:w-[22px] md:h-[22px]" /> : <ArrowUpRight size={18} className="md:w-[22px] md:h-[22px]" />}
@@ -642,7 +681,7 @@ export default function Wallet() {
                       <div>
                         <p className="text-[10px] md:text-xs font-black uppercase tracking-widest group-hover:text-white transition-colors">{t.title}</p>
                         <div className="flex items-center gap-2 md:gap-3 mt-1">
-                          <p className="text-[8px] md:text-[9px] text-white/20 font-black uppercase italic">{new Date(t.time).toLocaleDateString()}</p>
+                          <p className="text-[8px] md:text-[9px] text-white/20 font-black uppercase italic">{t.createdAt?.toDate ? t.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()}</p>
                           <span className="w-1 h-1 bg-white/10 rounded-full"></span>
                           <p className="text-[8px] text-yellow-400/60 font-black uppercase tracking-[0.1em] md:tracking-[0.2em]">{t.status}</p>
                         </div>

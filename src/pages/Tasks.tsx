@@ -1,8 +1,27 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckSquare, Share2, Youtube, Smartphone, Eye, Award, Clock, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { 
+  collection, 
+  getDocs, 
+  setDoc, 
+  addDoc, 
+  doc, 
+  serverTimestamp,
+  query,
+  limit 
+} from 'firebase/firestore';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
 const defaultTasks = [
   {
@@ -68,7 +87,7 @@ const defaultTasks = [
 ];
 
 export default function Tasks() {
-  const { userData, refreshUserData } = useAuth();
+  const { user, userData, refreshUserData } = useAuth();
   const [processingTaskId, setProcessingTaskId] = useState<string | null>(null);
 
   const [tasks, setTasks] = useState<any[]>([]);
@@ -118,15 +137,14 @@ export default function Tasks() {
     const loadTasks = async () => {
       try {
         console.log("Tasks: Fetching network missions...");
-        const { data, error } = await supabase.from('tasks').select('*');
+        const tasksRef = collection(db, 'tasks');
+        const tasksSnap = await getDocs(tasksRef);
         
         if (!mounted) return;
 
-        if (error) {
-          console.error("Tasks: Supabase connection failed:", error);
-          setTasks(defaultTasks);
-        } else if (data && data.length > 0) {
-          setTasks(data);
+        if (!tasksSnap.empty) {
+          const fetchedTasks = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setTasks(fetchedTasks);
         } else {
           setTasks(defaultTasks);
         }
@@ -152,7 +170,7 @@ export default function Tasks() {
   const [visitedLinks, setVisitedLinks] = useState<string[]>([]);
 
   const handleTaskAction = async (task: any) => {
-    if (!userData) return;
+    if (!user || !userData) return;
     
     // Check if already completed
     if (userData.completedTasks?.includes(task.id)) {
@@ -176,41 +194,48 @@ export default function Tasks() {
     await new Promise(resolve => setTimeout(resolve, 3500));
 
     try {
+      const userRef = doc(db, 'users', user.uid);
       const newBalances = {
         ...userData.balances,
         bonus: Number(userData.balances.bonus || 0) + task.reward
       };
       
-      const newTransaction = {
+      const transactionData = {
+        userId: user.uid,
+        userName: userData.displayName,
+        userEmail: user.email,
         type: 'task',
         title: `TASK: ${task.title}`,
         amount: task.reward,
-        time: new Date().toISOString(),
-        status: 'COMPLETED'
+        createdAt: serverTimestamp(),
+        status: 'pending', // Users can only create pending transactions per rules
+        walletType: 'bonus'
+      };
+
+      const completionData = {
+        userId: user.uid,
+        taskId: task.id,
+        completedAt: serverTimestamp(),
+        rewardEarned: task.reward
       };
 
       const completedTasks = Array.isArray(userData.completedTasks) 
         ? [...userData.completedTasks, task.id]
         : [task.id];
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          balances: newBalances,
-          transactions: [...(userData.transactions || []), newTransaction],
-          completedTasks: completedTasks
-        })
-        .eq('uid', userData.uid);
+      // Batch these updates if possible, but for simplicity:
+      await setDoc(userRef, { 
+        balances: newBalances,
+        completedTasks: completedTasks 
+      }, { merge: true });
+      
+      await addDoc(collection(db, 'transactions'), transactionData);
+      await addDoc(collection(db, 'taskCompletions'), completionData);
 
-      if (error) throw error;
-
-      await refreshUserData();
-
-      alert(`Task completed! ₦${task.reward} added to your Bonus Reservoir.`);
+      alert(`Task completion initiated! Verification protocol started. ₦${task.reward} will be settled to your Bonus Reservoir shortly.`);
       setVisitedLinks(prev => prev.filter(id => id !== task.id));
     } catch (err) {
-      console.error(err);
-      alert('Failed to complete task.');
+      handleFirestoreError(err, OperationType.WRITE, 'taskCompletions');
     } finally {
       setProcessingTaskId(null);
     }
