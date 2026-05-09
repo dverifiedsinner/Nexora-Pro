@@ -126,17 +126,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (currentUser) {
         setLoading(true);
+        console.log(`[Auth] User detected: ${currentUser.email} (${currentUser.uid})`);
         try {
           const userRef = doc(db, 'users', currentUser.uid);
-          const userSnap = await getDoc(userRef);
+          const userSnap = await getDoc(userRef).catch(e => {
+            console.error("[Auth] Initial Profile Fetch Failed", e);
+            handleFirestoreError(e, OperationType.GET, `users/${currentUser.uid}`);
+          });
 
           if (!userSnap.exists()) {
-            // Create initial profile
+            console.log("[Auth] Profile not found. Initializing...");
             const referredBy = localStorage.getItem('referredBy');
+            const isBootstrapAdmin = currentUser.email?.toLowerCase() === 'denacchy@gmail.com';
+            
             const newUserData: UserData = {
               uid: currentUser.uid,
               email: currentUser.email,
-              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Member',
               photoURL: currentUser.photoURL,
               balances: {
                 main: 0,
@@ -146,17 +152,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               },
               referralCode: `NEX-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
               referredBy: referredBy,
-              isAdmin: false,
+              isAdmin: isBootstrapAdmin,
               createdAt: serverTimestamp(),
             };
 
-            await setDoc(userRef, newUserData);
+            await setDoc(userRef, newUserData).catch(e => handleFirestoreError(e, OperationType.CREATE, `users/${currentUser.uid}`));
             localStorage.removeItem('referredBy');
 
-            // Handle initial admin setup for denacchy@gmail.com
-            if (currentUser.email === 'denacchy@gmail.com') {
-              await setDoc(doc(db, 'admins', currentUser.uid), { email: currentUser.email });
+            if (isBootstrapAdmin) {
+              console.log("[Auth] Bootstrapping SuperAdmin privileges...");
+              await setDoc(doc(db, 'admins', currentUser.uid), { email: currentUser.email }).catch(e => {
+                 console.warn("[Auth] Admin doc creation warning (may already exist)", e);
+              });
+            }
+          } else {
+            // Ensure flag is up to date for bootstrap user
+            const isBootstrapAdmin = currentUser.email?.toLowerCase() === 'denacchy@gmail.com';
+            if (isBootstrapAdmin && !userSnap.data().isAdmin) {
+              console.log("[Auth] Rectifying missing Admin flag for SuperUser");
               await setDoc(userRef, { isAdmin: true }, { merge: true });
+              await setDoc(doc(db, 'admins', currentUser.uid), { email: currentUser.email }, { merge: true });
             }
           }
 

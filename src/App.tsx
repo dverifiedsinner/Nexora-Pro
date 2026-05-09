@@ -60,6 +60,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode, adminOnly?: boolean 
   if (!user && !loading) {
     return adminOnly ? <Navigate to="/admin-portal" /> : <Navigate to="/auth" />;
   }
+
+  if (adminOnly && !loading && !userData?.isAdmin && user?.email !== 'denacchy@gmail.com') {
+    return <Navigate to="/dashboard" />;
+  }
   
   return <Layout>{children}</Layout>;
 };

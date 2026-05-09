@@ -1,419 +1,213 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { CheckSquare, Share2, Youtube, Smartphone, Eye, Award, Clock, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Zap, Globe, CheckCircle, Clock, 
+  ArrowRight, Link as LinkIcon, ExternalLink, 
+  Loader2, Search, Filter, ShieldCheck, 
+  Plus, Smartphone, MessageCircle
+} from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { 
-  collection, 
-  getDocs, 
-  setDoc, 
-  addDoc, 
-  doc, 
-  serverTimestamp,
-  query,
-  limit 
+  collection, getDocs, doc, updateDoc, 
+  serverTimestamp, addDoc, runTransaction 
 } from 'firebase/firestore';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-const defaultTasks = [
-  {
-    id: 't1',
-    title: 'Watch Nexora Intro Video',
-    desc: 'Watch the full 2-minute introductory video to learn how to maximize your earnings.',
-    reward: 100,
-    type: 'one-time',
-    category: 'Video',
-    icon: 'Youtube',
-    link: 'https://youtube.com/@nexora'
-  },
-  {
-    id: 't2',
-    title: 'Share Dashboard on WhatsApp',
-    desc: 'Post a screenshot of your dashboard on your WhatsApp status and get verified.',
-    reward: 250,
-    type: 'daily',
-    category: 'Social',
-    icon: 'Share2',
-    link: 'https://wa.me/?text=Check%20out%20my%20earnings%20on%20Nexora!'
-  },
-  {
-    id: 't3',
-    title: 'Join Official Telegram',
-    desc: 'Synchronize with the core community for real-time protocol updates and signals.',
-    reward: 150,
-    type: 'one-time',
-    category: 'Social',
-    icon: 'Share2',
-    link: 'https://t.me/nexora_official'
-  },
-  {
-    id: 't4',
-    title: 'Visit Daily Ad Portal',
-    desc: 'View featured ads from our sponsors to complete your daily node verification.',
-    reward: 200,
-    type: 'daily',
-    category: 'Ad',
-    icon: 'Eye',
-    link: 'https://example.com/ads'
-  },
-  {
-    id: 't5',
-    title: 'Follow NEXORA on X',
-    desc: 'Mirror our latest transmission on the X network to boost node visibility.',
-    reward: 100,
-    type: 'daily',
-    category: 'Social',
-    icon: 'Share2',
-    link: 'https://x.com/nexora_protocol'
-  },
-  {
-    id: 't6',
-    title: 'Submit App Feedback',
-    desc: 'Help us optimize the network by sharing your experience with the team.',
-    reward: 500,
-    type: 'one-time',
-    category: 'Feedback',
-    icon: 'Award',
-    link: '#'
-  }
-];
 
 export default function Tasks() {
   const { user, userData, refreshUserData } = useAuth();
-  const [processingTaskId, setProcessingTaskId] = useState<string | null>(null);
-
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const getCategoryCount = (category: string) => {
-    return tasks.filter(t => t.category === category).length;
-  };
-
-  const getCompletedCount = (category: string) => {
-    return tasks.filter(t => t.category === category && userData?.completedTasks?.includes(t.id)).length;
-  };
-
-  const taskCategories = [
-    { 
-      title: 'Daily tasks', 
-      icon: Clock, 
-      count: `${getCompletedCount('Social') + getCompletedCount('Ad')}/${getCategoryCount('Social') + getCategoryCount('Ad')}`, 
-      color: 'text-yellow-400' 
-    },
-    { 
-      title: 'One-time', 
-      icon: CheckSquare, 
-      count: getCategoryCount('Video') + getCategoryCount('Feedback'), 
-      color: 'text-white' 
-    },
-    { 
-      title: 'Sponsored', 
-      icon: Share2, 
-      count: getCategoryCount('Social'), 
-      color: 'text-yellow-500' 
-    },
-  ];
-
-  React.useEffect(() => {
-    let mounted = true;
-
-    // Local safety timeout to force loading off after 8s
-    const timeoutId = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn("Tasks: Data load timed out, unlocking loader.");
-        if (tasks.length === 0) setTasks(defaultTasks);
-        setLoading(false);
-      }
-    }, 8000);
-
-    const loadTasks = async () => {
-      try {
-        console.log("Tasks: Fetching network missions...");
-        const tasksRef = collection(db, 'tasks');
-        const tasksSnap = await getDocs(tasksRef);
-        
-        if (!mounted) return;
-
-        if (!tasksSnap.empty) {
-          const fetchedTasks = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setTasks(fetchedTasks);
-        } else {
-          setTasks(defaultTasks);
-        }
-      } catch (err) {
-        console.error("Tasks: Critical network error:", err);
-        if (mounted) setTasks(defaultTasks);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-          clearTimeout(timeoutId);
-        }
-      }
-    };
-
-    loadTasks();
-    return () => { 
-      mounted = false;
-      clearTimeout(timeoutId);
-    };
+  useEffect(() => {
+    fetchTasks();
   }, []);
 
-
-  const [visitedLinks, setVisitedLinks] = useState<string[]>([]);
-
-  const handleTaskAction = async (task: any) => {
-    if (!user || !userData) return;
-    
-    // Check if already completed
-    if (userData.completedTasks?.includes(task.id)) {
-      alert("This task has already been completed.");
-      return;
-    }
-
-    // Step 1: If not visited, open link
-    if (!visitedLinks.includes(task.id)) {
-      if (task.link && task.link !== '#') {
-        window.open(task.link, '_blank');
-        setVisitedLinks(prev => [...prev, task.id]);
-        return;
-      }
-    }
-
-    // Step 2: If visited, allow redemption
-    setProcessingTaskId(task.id);
-    
-    // Simulate task processing (verification)
-    await new Promise(resolve => setTimeout(resolve, 3500));
-
+  const fetchTasks = async () => {
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const newBalances = {
-        ...userData.balances,
-        bonus: Number(userData.balances.bonus || 0) + task.reward
-      };
-      
-      const transactionData = {
-        userId: user.uid,
-        userName: userData.displayName,
-        userEmail: user.email,
-        type: 'task',
-        title: `TASK: ${task.title}`,
-        amount: task.reward,
-        createdAt: serverTimestamp(),
-        status: 'pending', // Users can only create pending transactions per rules
-        walletType: 'bonus'
-      };
-
-      const completionData = {
-        userId: user.uid,
-        taskId: task.id,
-        completedAt: serverTimestamp(),
-        rewardEarned: task.reward
-      };
-
-      const completedTasks = Array.isArray(userData.completedTasks) 
-        ? [...userData.completedTasks, task.id]
-        : [task.id];
-
-      // Batch these updates if possible, but for simplicity:
-      await setDoc(userRef, { 
-        balances: newBalances,
-        completedTasks: completedTasks 
-      }, { merge: true });
-      
-      await addDoc(collection(db, 'transactions'), transactionData);
-      await addDoc(collection(db, 'taskCompletions'), completionData);
-
-      alert(`Task completion initiated! Verification protocol started. ₦${task.reward} will be settled to your Bonus Reservoir shortly.`);
-      setVisitedLinks(prev => prev.filter(id => id !== task.id));
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'taskCompletions');
+      const querySnapshot = await getDocs(collection(db, 'tasks'));
+      const taskData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTasks(taskData);
+    } catch (error) {
+       console.error(error);
     } finally {
-      setProcessingTaskId(null);
+      setLoading(false);
     }
   };
 
-  const getIcon = (iconName: string | any) => {
-    if (typeof iconName !== 'string') return iconName || CheckSquare;
-    switch (iconName) {
-      case 'Youtube': return Youtube;
-      case 'Share2': return Share2;
-      case 'Eye': return Eye;
-      case 'Award': return Award;
-      case 'Smartphone': return Smartphone;
-      default: return CheckSquare;
-    }
+  const completeTask = async (task: any) => {
+    if (!user || !userData) return;
+    if (userData.completedTasks?.includes(task.id)) return;
+
+    setCompleting(task.id);
+    window.open(task.link, '_blank');
+
+    // Simulate verification delay
+    setTimeout(async () => {
+      try {
+        await runTransaction(db, async (transaction) => {
+          const userRef = doc(db, 'users', user.uid);
+          const userDoc = await transaction.get(userRef);
+          
+          if (!userDoc.exists()) throw new Error("User node not found");
+          
+          const currentMain = userDoc.data().balances?.main || 0;
+          const completedTasks = userDoc.data().completedTasks || [];
+          
+          if (completedTasks.includes(task.id)) return;
+
+          transaction.update(userRef, {
+            'balances.main': currentMain + task.reward,
+            completedTasks: [...completedTasks, task.id]
+          });
+
+          const transRef = doc(collection(db, 'transactions'));
+          transaction.set(transRef, {
+            userId: user.uid,
+            type: 'task',
+            title: `PROTOCOL: ${task.title}`,
+            amount: task.reward,
+            status: 'settled',
+            createdAt: serverTimestamp()
+          });
+        });
+
+        await refreshUserData();
+        alert(`PROTOCOL_VERIFIED: Reward of ₦${task.reward} synchronized to main vault.`);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setCompleting(null);
+      }
+    }, 5000); // 5s verification time
   };
 
-  const isCompleted = (taskId: string) => {
-    return userData?.completedTasks?.includes(taskId);
-  };
-
-  if (loading && tasks.length === 0) {
+  if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 size={48} className="text-yellow-400 animate-spin" />
+      <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
+        <Loader2 className="animate-spin text-ink dark:text-white" size={48} />
       </div>
     );
   }
 
-  return (
-    <div className="space-y-8 pb-12">
-      <header className="space-y-2">
-        <h1 className="text-4xl font-display font-black text-gradient uppercase italic tracking-tight">Earn Center.</h1>
-        <p className="text-white/40 font-light italic text-sm">Complete micro-tasks and earn instant rewards to your bonus wallet.</p>
-      </header>
+  const dailyTasks = tasks.filter(t => t.type === 'daily' && t.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const sponsoredTasks = tasks.filter(t => t.type === 'sponsored' && t.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      {/* Category Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {taskCategories.map((cat, i) => (
-          <motion.div 
-            key={i} 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="group relative"
-          >
-            <div className="glass-card p-6 md:p-8 flex items-center justify-between transition-all border-white/5 hover:border-white/20 rounded-3xl overflow-hidden shadow-2xl">
-              <div className="flex items-center gap-6 relative z-10">
-                <div className={`p-5 rounded-[1.5rem] bg-gradient-to-br from-white/5 to-transparent border border-white/10 ${cat.color} group-hover:scale-110 group-hover:rotate-6 transition-all shadow-[0_15px_35px_-10px_rgba(0,0,0,0.5)]`}>
-                  <cat.icon size={28} className="drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]" />
-                </div>
-                <div>
-                  <h3 className="font-display font-black text-[11px] uppercase tracking-[0.4em] text-white/50">{cat.title}</h3>
-                  <p className="text-[12px] font-black text-white mt-1">{cat.count} Available</p>
-                </div>
-              </div>
-              <ArrowRight size={20} className="text-white/20 group-hover:text-yellow-400 group-hover:translate-x-1 transition-all" />
-              
-              {/* Corner accent */}
-              <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-white/[0.02] rounded-full group-hover:bg-yellow-500/5 transition-colors" />
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-ink dark:text-white pb-24">
+      {/* Brutalist Header */}
+      <div className="bg-ink text-yellow-400 border-b-4 border-ink p-10 md:p-16 relative overflow-hidden">
+        <div className="relative z-10 space-y-6">
+          <span className="text-[10px] font-mono font-black uppercase tracking-[0.5em] opacity-40">NETWORK_OPERATIONAL_MISSIONS</span>
+          <h2 className="text-6xl md:text-8xl font-display font-black tracking-tighter uppercase italic leading-none">MISSIONS.</h2>
+          <div className="flex flex-col md:flex-row gap-8 items-start md:items-end justify-between">
+            <p className="max-w-xl text-xs md:text-sm font-mono font-bold leading-relaxed opacity-80 uppercase">
+              Execute micro-protocols to maintain network health and secure rewards. Each mission provides instant liquidity upon verification.
+            </p>
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-yellow-400/40" size={20} />
+              <input 
+                type="text" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="QUERY_MISSIONS..."
+                className="w-full bg-white/5 border-4 border-yellow-400 p-5 pl-16 font-black text-xs uppercase focus:outline-none focus:bg-white/10"
+              />
             </div>
-          </motion.div>
-        ))}
+          </div>
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8 items-start">
-        {/* Task List */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h2 className="text-xl font-display font-black italic uppercase tracking-widest text-xs opacity-40">Recommended Assets</h2>
-            <div className="flex gap-2">
-              <span className="text-[9px] px-4 py-1.5 bg-yellow-500 text-slate-950 rounded-full font-black uppercase tracking-widest shadow-lg shadow-yellow-500/20">All</span>
-              <span className="text-[9px] px-4 py-1.5 bg-white/5 border border-white/10 text-white/40 rounded-full font-black uppercase tracking-widest hover:text-white transition-colors cursor-pointer">New</span>
-            </div>
+      <div className="max-w-[1200px] mx-auto p-6 md:p-12 space-y-24">
+        {/* Daily Missions */}
+        <section className="space-y-12">
+          <div className="flex items-center gap-6 border-b-4 border-ink dark:border-white pb-6">
+             <Clock className="text-yellow-500" />
+             <h3 className="text-4xl font-display font-black uppercase italic tracking-tighter">DAILY_NODES.</h3>
           </div>
-          
-          {tasks.map((task, i) => (
-            <motion.div 
-              key={task.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`glass-card p-6 md:p-10 flex flex-col md:flex-row md:items-center gap-8 group hover:border-yellow-500/30 relative overflow-hidden transition-all rounded-[2.5rem] shadow-xl ${isCompleted(task.id) ? 'opacity-60 grayscale-[50%]' : ''}`}
-            >
-              <div className={`w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform flex-shrink-0 relative z-10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] ${isCompleted(task.id) ? 'bg-emerald-500/10 border-emerald-500/20' : 'group-hover:bg-yellow-500/10'}`}>
-                {isCompleted(task.id) ? (
-                  <CheckCircle2 size={40} className="text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.4)]" />
-                ) : (
-                  React.createElement(getIcon(task.icon || task.iconPath), { 
-                    size: 40, 
-                    className: "text-yellow-400 group-hover:text-yellow-300 drop-shadow-[0_0_15px_rgba(250,204,21,0.4)]" 
-                  })
-                )}
-                {/* Shine highlight */}
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-              </div>
-              <div className="flex-1 space-y-2 relative z-10">
-                <div className="flex items-center gap-2">
-                  <span className={`text-[9px] uppercase font-black tracking-widest leading-none ${isCompleted(task.id) ? 'text-emerald-400' : 'text-yellow-400'}`}>{task.category}</span>
-                  <span className="text-[9px] uppercase font-bold text-white/20 tracking-tighter leading-none">· {task.type}</span>
-                </div>
-                <h3 className={`text-xl md:text-2xl font-display font-black tracking-tight leading-tight transition-colors ${isCompleted(task.id) ? 'text-emerald-400' : 'text-white group-hover:text-yellow-400'}`}>{task.title}</h3>
-                <p className="text-xs md:text-sm text-white/30 font-light italic leading-relaxed">{task.desc}</p>
-              </div>
-              <div className="md:text-right flex md:flex-col items-center md:items-end justify-between md:justify-center gap-6 border-t md:border-t-0 md:border-l border-white/5 pt-6 md:pt-0 md:pl-10 shrink-0 relative z-10">
-                <div className="space-y-1">
-                  <p className="text-[9px] uppercase font-black text-white/20 tracking-widest">Yield Reward</p>
-                  <p className={`text-2xl font-display font-black ${isCompleted(task.id) ? 'text-emerald-400' : 'text-yellow-400'}`}>₦{task.reward}</p>
-                </div>
-                <button 
-                  onClick={() => handleTaskAction(task)}
-                  disabled={processingTaskId === task.id || isCompleted(task.id)}
-                  className={`btn-primary py-3 md:py-4 px-10 text-[10px] uppercase tracking-[0.2em] font-black shadow-yellow-500/20 w-full md:w-auto flex items-center justify-center gap-2 disabled:opacity-50 ${isCompleted(task.id) ? 'bg-emerald-600/20 border-emerald-500/20 text-emerald-400 cursor-default shadow-none' : ''}`}
-                >
-                  {processingTaskId === task.id ? (
-                    <><Loader2 size={16} className="animate-spin text-white" /> Verifying</>
-                  ) : isCompleted(task.id) ? (
-                    'Liquidated'
-                  ) : visitedLinks.includes(task.id) ? (
-                    'Redeem Bonus'
-                  ) : (
-                    'Initiate Task'
-                  )}
-                </button>
-              </div>
-              {/* Abstract backround */}
-              <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white/[0.01] rounded-full group-hover:bg-yellow-500/5 transition-colors"></div>
-            </motion.div>
-          ))}
-        </div>
+          <div className="grid gap-6">
+            {dailyTasks.map((task, i) => (
+              <TaskCard key={task.id} task={task} completing={completing} onComplete={completeTask} completed={userData?.completedTasks?.includes(task.id)} />
+            ))}
+            {dailyTasks.length === 0 && <p className="font-mono text-xs opacity-40 uppercase">NO_DAILY_PROTOCOLS_READY</p>}
+          </div>
+        </section>
 
-        {/* Sidebar */}
-        <div className="space-y-8">
-          <div className="glass-card p-8 md:p-10 bg-gradient-to-br from-blue-900/60 via-blue-900/40 to-black border-white/5 relative overflow-hidden shadow-2xl group transition-all hover:translate-y-[-5px]">
-             <div className="relative z-10 space-y-8">
-                <div className="w-16 h-16 rounded-[1.5rem] bg-white/10 flex items-center justify-center shadow-2xl backdrop-blur-md border border-white/10 group-hover:rotate-12 transition-transform duration-500">
-                  <Award size={32} className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-                </div>
-                <div>
-                  <h3 className="text-2xl md:text-3xl font-display font-black leading-tight italic uppercase tracking-tighter">Yield <br /> Mastery.</h3>
-                  <p className="text-white/40 text-xs md:text-sm font-light italic mt-4 leading-relaxed">Complete at least 5 sponsored tasks daily to qualify for the elite leaderboard bonus pools.</p>
-                </div>
-                <div className="space-y-3 pt-4">
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full w-3/5 bg-gradient-to-r from-yellow-400 to-yellow-600 shadow-[0_0_15px_rgba(250,204,21,0.5)]"></div>
-                  </div>
-                  <p className="text-[9px] text-white/20 font-black uppercase tracking-widest text-center">Protocol Level 3 Progress: 60%</p>
-                </div>
-             </div>
-             <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 blur-[100px] -mr-20 -mt-20 rounded-full animate-pulse"></div>
+        {/* Sponsored Portals */}
+        <section className="space-y-12">
+          <div className="flex items-center gap-6 border-b-4 border-ink dark:border-white pb-6">
+             <Zap className="text-yellow-500" />
+             <h3 className="text-4xl font-display font-black uppercase italic tracking-tighter">SPONSORED_FLOWS.</h3>
           </div>
-
-          <div className="glass-card p-8 md:p-10 border-white/5 bg-white/[0.02] shadow-xl">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-8 border-b border-white/5 pb-4">OPERATIONAL GUIDES</h3>
-            <ul className="text-xs md:text-sm text-white/40 space-y-8 font-light italic">
-              <li className="flex gap-4 items-start">
-                 <div className="w-5 h-5 rounded-lg bg-yellow-500/10 flex-shrink-0 flex items-center justify-center mt-0.5">
-                   <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
-                 </div>
-                 <span>Screenshot verification must be high-resolution and untampered node data.</span>
-              </li>
-              <li className="flex gap-4 items-start">
-                 <div className="w-5 h-5 rounded-lg bg-yellow-500/10 flex-shrink-0 flex items-center justify-center mt-0.5">
-                   <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
-                 </div>
-                 <span>Audit processing typically concludes within 24-48 standard cycles.</span>
-              </li>
-              <li className="flex gap-4 items-start">
-                 <div className="w-5 h-5 rounded-lg bg-red-500/10 flex-shrink-0 flex items-center justify-center mt-0.5">
-                   <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                 </div>
-                 <span>Engineered manipulation will result in immediate network termination (permaban).</span>
-              </li>
-            </ul>
+          <div className="grid gap-6">
+            {sponsoredTasks.map((task, i) => (
+              <TaskCard key={task.id} task={task} completing={completing} onComplete={completeTask} completed={userData?.completedTasks?.includes(task.id)} />
+            ))}
+            {sponsoredTasks.length === 0 && <p className="font-mono text-xs opacity-40 uppercase">NO_SPONSORED_FLOWS_ACTIVE</p>}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
 }
 
+function TaskCard({ task, completing, onComplete, completed }: any) {
+  const isCompleting = completing === task.id;
+
+  return (
+    <div className={`p-8 border-4 border-ink dark:border-white bg-white dark:bg-slate-900 flex flex-col md:flex-row items-center justify-between gap-8 group transition-all ${completed ? 'opacity-40 grayscale' : 'hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[12px_12px_0px_0px_rgba(255,255,255,1)]'}`}>
+      <div className="flex items-center gap-8 w-full">
+        <div className="w-16 h-16 border-4 border-ink bg-slate-50 dark:bg-white/5 flex items-center justify-center shrink-0">
+          {task.category === 'Social' && <MessageCircle size={32} />}
+          {task.category === 'Video' && <Play size={32} fill="currentColor" />}
+          {!['Social', 'Video'].includes(task.category) && <Globe size={32} />}
+        </div>
+        <div className="space-y-2">
+           <div className="flex items-center gap-4">
+              <span className="text-[10px] font-mono font-black uppercase opacity-60">/{task.category}</span>
+              {completed && <span className="bg-emerald-500 text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest">VERIFIED</span>}
+           </div>
+           <h4 className="text-3xl font-display font-black uppercase italic tracking-tighter leading-none">{task.title}</h4>
+           <p className="text-xs font-mono font-bold opacity-60 line-clamp-1">{task.desc}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-12 w-full md:w-auto justify-between md:justify-end">
+        <div className="text-right">
+           <p className="text-[8px] font-black uppercase opacity-40 mb-1">REWARD</p>
+           <p className="text-2xl font-display font-black text-blue-600 dark:text-blue-400">₦{task.reward.toLocaleString()}</p>
+        </div>
+        
+        <button 
+          onClick={() => onComplete(task)}
+          disabled={completed || isCompleting}
+          className={`px-10 py-5 font-black text-xs uppercase tracking-widest transition-all skew-x-[-10deg] ${
+            completed ? 'bg-slate-100 text-slate-400' : 'bg-yellow-400 text-ink border-4 border-ink active:translate-y-2 active:shadow-none'
+          }`}
+        >
+          <span className="skew-x-[10deg] flex items-center gap-3">
+             {isCompleting ? <><Loader2 className="animate-spin" /> VERIFYING...</> : (completed ? 'EXECUTED' : 'EXECUTE')}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const Play = ({ className, size = 20, fill = "none" }: { className?: string; size?: number, fill?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill={fill} 
+    stroke="currentColor" 
+    strokeWidth="3" 
+    strokeLinecap="square" 
+    strokeLinejoin="inherit" 
+    className={className}
+  >
+    <polygon points="5 3 19 12 5 21 5 3" />
+  </svg>
+);

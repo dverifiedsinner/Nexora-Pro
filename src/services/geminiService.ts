@@ -27,15 +27,20 @@ export const generateCourseContent = async (courseTitle: string): Promise<Genera
     const ai = getAI();
     
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", // Switched from 1.5-flash (prohibited) to 3-flash-preview (recommended)
-      contents: `Generate a comprehensive educational article and a 5-question quiz for a course titled: "${courseTitle}". The article should be high-quality, engaging, and at least 600 words long. The quiz must have 4 options per question and one correct answer index (0-3).`,
+      model: "gemini-3-flash-preview",
+      contents: `Generate a comprehensive educational article and a 5-question quiz for a course titled: "${courseTitle}".
+      
+      Requirements:
+      - Article: High-quality, technical, engaging, at least 800 words.
+      - Quiz: 5 questions, 4 options each, one correct answer index (0-3).
+      - Output MUST be valid JSON according to the schema.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             title: { type: Type.STRING },
-            article: { type: Type.STRING, description: "Detailed educational content." },
+            article: { type: Type.STRING, description: "Full educational content (Markdown allowed)" },
             questions: {
               type: Type.ARRAY,
               items: {
@@ -45,12 +50,16 @@ export const generateCourseContent = async (courseTitle: string): Promise<Genera
                   text: { type: Type.STRING },
                   options: {
                     type: Type.ARRAY,
-                    items: { type: Type.STRING }
+                    items: { type: Type.STRING },
+                    minItems: 4,
+                    maxItems: 4
                   },
-                  correctAnswer: { type: Type.NUMBER, description: "Index of correct option (0-3)" }
+                  correctAnswer: { type: Type.NUMBER, description: "Correct option index (0-3)" }
                 },
                 required: ["id", "text", "options", "correctAnswer"]
-              }
+              },
+              minItems: 5,
+              maxItems: 5
             }
           },
           required: ["title", "article", "questions"]
@@ -59,15 +68,24 @@ export const generateCourseContent = async (courseTitle: string): Promise<Genera
     });
 
     if (!response || !response.text) {
-      console.error("AI: Received empty response");
-      throw new Error("AI Protocol Error: Null response from neural network.");
+      throw new Error("AI Protocol Error: Neural network returned an empty frequency.");
     }
-
-    console.log("AI: Successfully generated curriculum for", courseTitle);
     
-    // Clean potential markdown formatting if present
-    const cleanJson = response.text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-    return JSON.parse(cleanJson) as GeneratedCourse;
+    // Direct parse from response.text is recommended when using responseMimeType: "application/json"
+    let aiData;
+    try {
+      aiData = JSON.parse(response.text.trim());
+    } catch (e) {
+      // Fallback: try to extract JSON if formatted with markdown blocks
+      const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+         aiData = JSON.parse(jsonMatch[0]);
+      } else {
+         throw e;
+      }
+    }
+    
+    return aiData as GeneratedCourse;
   } catch (error) {
     console.error("Gemini Critical Error:", error);
     if (error instanceof Error) {

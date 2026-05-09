@@ -1,14 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   
-  --color-primary: #facc15; /* Yellow 400 */
-  --color-primary-dark: #eab308; /* Yellow 600 */
-  --color-secondary: #ffffff; /* White */
-  --color-accent: #1e3a8a; /* Navy Blue 900 */
+  --color-primary: #facc15; 
+  --color-primary-dark: #eab308;
+  --color-ink: #020617;
   
   --animate-spin-slow: spin-slow 8s linear infinite;
   --animate-infinite-spin: infinite-spin 10s linear infinite;
