@@ -129,10 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log(`[Auth] User detected: ${currentUser.email} (${currentUser.uid})`);
         try {
           const userRef = doc(db, 'users', currentUser.uid);
-          const userSnap = await getDoc(userRef).catch(e => {
-            console.error("[Auth] Initial Profile Fetch Failed", e);
-            handleFirestoreError(e, OperationType.GET, `users/${currentUser.uid}`);
-          });
+          const userSnap = await getDoc(userRef);
 
           if (!userSnap.exists()) {
             console.log("[Auth] Profile not found. Initializing...");

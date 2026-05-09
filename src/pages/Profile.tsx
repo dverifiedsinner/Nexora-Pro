@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { User, Mail, Phone, Building2, CreditCard, Save, ShieldCheck, Zap, ArrowRight, UserCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  User, Mail, Phone, Building2, CreditCard, Save, 
+  ShieldCheck, Zap, ArrowRight, UserCircle, 
+  Settings, Camera, LogOut, CheckCircle, Info, Loader2
+} from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useAuth, handleFirestoreError } from '../contexts/AuthContext';
@@ -15,7 +19,7 @@ enum OperationType {
 }
 
 export default function Profile() {
-  const { user, userData } = useAuth();
+  const { user, userData, signOut } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     displayName: '',
@@ -48,7 +52,7 @@ export default function Profile() {
         profileUpdated: true
       });
       
-      alert('Node identity synchronized successfully.');
+      alert('Profile updated successfully.');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'users');
     } finally {
@@ -57,154 +61,171 @@ export default function Profile() {
   };
 
   return (
-    <div className="space-y-12 pb-12 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 relative">
-        <div className="z-10 text-center md:text-left">
-          <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight text-gradient leading-none mb-2 uppercase italic">Identity Core.</h1>
-          <p className="text-white/30 font-light italic text-[10px] uppercase tracking-[0.2em]">Personal Metadata & Settlement Authority</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pb-32 font-sans">
+      {/* Header */}
+      <header className="p-12 bg-slate-900 text-white rounded-b-[4rem] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2" />
+        <div className="relative z-10 flex flex-col items-center text-center space-y-8">
+          <div className="relative group">
+            <div className="w-32 h-32 rounded-[3.5rem] overflow-hidden border-4 border-white/5 p-2 bg-slate-950 shadow-2xl transition-transform group-hover:scale-105 duration-500">
+              <img 
+                src={userData?.photoURL || `https://ui-avatars.com/api/?name=${userData?.displayName}&background=0D9488&color=fff`} 
+                alt="" 
+                className="w-full h-full object-cover rounded-[2.5rem]"
+              />
+            </div>
+            <button className="absolute -bottom-2 -right-2 p-4 bg-cyan-600 rounded-2xl shadow-2xl border-4 border-slate-900 hover:bg-cyan-500 transition-colors">
+               <Camera size={20} className="text-white" />
+            </button>
+          </div>
+          <div>
+            <h1 className="text-4xl font-black italic tracking-tighter uppercase">{userData?.displayName || 'NEURAL ID: 000'}</h1>
+            <p className="text-cyan-400 text-[10px] font-black uppercase tracking-[0.4em] mt-3 italic opacity-80">AUTHORIZED VANGUARD OPERATIVE</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-4">
+             <div className="px-6 py-3 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/5 flex items-center gap-3">
+                <ShieldCheck size={18} className="text-cyan-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Identity Verified</span>
+             </div>
+             <div className="px-6 py-3 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/5 flex items-center gap-3">
+                <Zap size={18} className="text-emerald-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Node Uptime: 99.9%</span>
+             </div>
+          </div>
         </div>
-        <div className="flex items-center justify-center gap-4 px-5 py-2.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md self-center md:self-auto">
-           <ShieldCheck size={18} className="text-cyan-400 md:w-5 md:h-5" />
-           <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-white/60">Level 1 Verified Node</span>
-        </div>
-        <div className="absolute -top-10 -right-20 w-80 h-80 bg-cyan-500/5 blur-[120px] rounded-full animate-float-slow pointer-events-none"></div>
       </header>
 
-      <div className="grid lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSave} className="glass-card p-8 sm:p-12 md:p-16 border-white/5 space-y-10 md:space-y-12 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.01] to-transparent pointer-events-none"></div>
+      <div className="p-8 max-w-2xl mx-auto space-y-12">
+        <form onSubmit={handleSave} className="space-y-12">
+          {/* Identity Section */}
+          <section className="bg-white dark:bg-slate-900 rounded-[3.5rem] p-10 border border-slate-100 dark:border-slate-800/50 shadow-2xl shadow-slate-950/20 space-y-10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/[0.03] rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
             
-            {/* Personal Data Section */}
-            <div className="space-y-6 md:space-y-8 relative z-10">
-               <div className="flex items-center gap-4">
-                  <div className="h-0.5 w-8 md:w-10 bg-cyan-500 rounded-full"></div>
-                  <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-white/30">Personal Metadata</h3>
-               </div>
-               <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-                  <div className="space-y-3">
-                     <label className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Full Identity</label>
-                     <div className="relative group">
-                        <User size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 transition-colors md:w-[18px] md:h-[18px]" />
-                        <input 
-                           type="text" 
-                           value={formData.displayName}
-                           onChange={(e) => setFormData({...formData, displayName: e.target.value})}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-5 pl-12 md:pl-14 pr-6 focus:outline-none focus:border-cyan-500 transition-all font-bold text-xs md:text-sm"
-                           placeholder="Full Name"
-                        />
-                     </div>
-                  </div>
-                  <div className="space-y-3">
-                     <label className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Comm Link (Phone)</label>
-                     <div className="relative group">
-                        <Phone size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 transition-colors md:w-[18px] md:h-[18px]" />
-                        <input 
-                           type="tel" 
-                           value={formData.phoneNumber}
-                           onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-5 pl-12 md:pl-14 pr-6 focus:outline-none focus:border-cyan-500 transition-all font-bold text-xs md:text-sm"
-                           placeholder="080 0000 0000"
-                        />
-                     </div>
-                  </div>
-               </div>
+            <div className="flex items-center gap-5 relative z-10">
+              <div className="w-14 h-14 bg-cyan-500/10 text-cyan-500 rounded-[1.5rem] flex items-center justify-center border border-cyan-500/20">
+                <UserCircle size={28} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black italic tracking-tight uppercase">Identity Node</h3>
+                <p className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Personal Core Data Configuration</p>
+              </div>
+            </div>
+            
+            <div className="space-y-8 relative z-10">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Authorized Full Name</label>
+                <div className="relative group">
+                  <User size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-500 transition-colors" />
+                  <input 
+                    type="text" 
+                    value={formData.displayName}
+                    onChange={(e) => setFormData({...formData, displayName: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[2rem] py-5 pl-16 pr-8 font-black italic text-sm tracking-tight focus:outline-none focus:ring-1 ring-cyan-500 transition-all placeholder:text-slate-700"
+                    placeholder="ENTER FULL LEGAL NAME"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Terminal Phone Number</label>
+                <div className="relative group">
+                  <Phone size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-500 transition-colors" />
+                  <input 
+                    type="tel" 
+                    value={formData.phoneNumber}
+                    onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[2rem] py-5 pl-16 pr-8 font-black italic text-sm tracking-tight focus:outline-none focus:ring-1 ring-cyan-500 transition-all placeholder:text-slate-700 uppercase"
+                    placeholder="+234 XXX XXX XXXX"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Settlement Section */}
+          <section className="bg-white dark:bg-slate-900 rounded-[3.5rem] p-10 border border-slate-100 dark:border-slate-800/50 shadow-2xl shadow-slate-950/20 space-y-10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/[0.03] rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+
+            <div className="flex items-center gap-5 relative z-10">
+              <div className="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-[1.5rem] flex items-center justify-center border border-emerald-500/20">
+                <CreditCard size={28} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black italic tracking-tight uppercase">Liquidation Endpoint</h3>
+                <p className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Primary Settlement Channel Configuration</p>
+              </div>
             </div>
 
-            {/* Bank Data Section */}
-            <div className="space-y-6 md:space-y-8 relative z-10">
-               <div className="flex items-center gap-4">
-                  <div className="h-0.5 w-8 md:w-10 bg-pink-500 rounded-full"></div>
-                  <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-white/30">Settlement Account</h3>
-               </div>
-               <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-                  <div className="space-y-3 md:col-span-2">
-                     <label className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Bank Node</label>
-                     <div className="relative group">
-                        <Building2 size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-pink-500 transition-colors md:w-[18px] md:h-[18px]" />
-                        <input 
-                           type="text" 
-                           value={formData.bankName}
-                           onChange={(e) => setFormData({...formData, bankName: e.target.value})}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-5 pl-12 md:pl-14 pr-6 focus:outline-none focus:border-pink-500 transition-all font-bold text-xs md:text-sm"
-                           placeholder="e.g. Zenith Bank, Kuda"
-                        />
-                     </div>
-                  </div>
-                  <div className="space-y-3">
-                     <label className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Account ID (Number)</label>
-                     <div className="relative group">
-                        <CreditCard size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-pink-500 transition-colors md:w-[18px] md:h-[18px]" />
-                        <input 
-                           type="text" 
-                           value={formData.accountNumber}
-                           onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-5 pl-12 md:pl-14 pr-6 focus:outline-none focus:border-pink-500 transition-all font-bold text-xs md:text-sm"
-                           placeholder="0000000000"
-                        />
-                     </div>
-                  </div>
-                  <div className="space-y-3">
-                     <label className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Identity Name (Acc Name)</label>
-                     <div className="relative group">
-                        <UserCircle size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-pink-500 transition-colors md:w-[18px] md:h-[18px]" />
-                        <input 
-                           type="text" 
-                           value={formData.accountName}
-                           onChange={(e) => setFormData({...formData, accountName: e.target.value})}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-5 pl-12 md:pl-14 pr-6 focus:outline-none focus:border-pink-500 transition-all font-bold text-xs md:text-sm"
-                           placeholder="Account Holder Name"
-                        />
-                     </div>
-                  </div>
-               </div>
+            <div className="space-y-8 relative z-10">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Settlement Institution</label>
+                <div className="relative group">
+                  <Building2 size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+                  <input 
+                    type="text" 
+                    value={formData.bankName}
+                    onChange={(e) => setFormData({...formData, bankName: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[2rem] py-5 pl-16 pr-8 font-black italic text-sm tracking-tight focus:outline-none focus:ring-1 ring-emerald-500 transition-all placeholder:text-slate-700 uppercase"
+                    placeholder="WEMA, KUDA, OPAY, ZENITH"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Account ID</label>
+                  <input 
+                    type="text" 
+                    value={formData.accountNumber}
+                    onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[2rem] py-5 px-8 font-black italic text-sm tracking-tight focus:outline-none focus:ring-1 ring-emerald-500 transition-all placeholder:text-slate-700 tabular-nums"
+                    placeholder="000 000 0000"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Legal Payee Name</label>
+                  <input 
+                    type="text" 
+                    value={formData.accountName}
+                    onChange={(e) => setFormData({...formData, accountName: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[2rem] py-5 px-8 font-black italic text-sm tracking-tight focus:outline-none focus:ring-1 ring-emerald-500 transition-all placeholder:text-slate-700 uppercase"
+                    placeholder="NODE ACCOUNT HOLDER"
+                  />
+                </div>
+              </div>
             </div>
+          </section>
 
-            <button 
-               disabled={isSaving}
-               className="w-full btn-primary py-5 md:py-6 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] shadow-2xl shadow-cyan-500/30 active:scale-95 transition-all flex items-center justify-center gap-3 md:gap-4"
-            >
-               {isSaving ? 'Synchronizing Node...' : <><Save size={18} className="md:w-5 md:h-5" /> Commit Profile Changes</>}
-            </button>
-          </form>
-        </div>
+          <button 
+            type="submit"
+            disabled={isSaving}
+            className="w-full py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24} /> SYNCHRONIZE IDENTITY</>}
+          </button>
+        </form>
 
-        <div className="space-y-12">
-           <section className="glass-card p-10 border-white/5 bg-gradient-to-br from-cyan-900/40 via-black to-black shadow-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.1),transparent)] group-hover:opacity-100 transition-opacity"></div>
-              <div className="w-16 h-16 rounded-[2.5rem] bg-cyan-500 shadow-2xl shadow-cyan-500/40 flex items-center justify-center mb-8 relative z-10 animate-float">
-                <ShieldCheck size={32} className="text-white fill-white" />
-              </div>
-              <h4 className="font-display font-black text-2xl mb-4 italic uppercase tracking-tight relative z-10">Security <br /> Protocol.</h4>
-              <p className="text-sm text-white/40 leading-relaxed font-light italic relative z-10">
-                Your bank details are only used for settlement outflows. Ensure accuracy to prevent liquidation delays. Identity theft results in immediate node termination.
-              </p>
-           </section>
+        {/* Security Info */}
+        <section className="p-10 bg-cyan-500/[0.02] dark:bg-cyan-500/[0.05] rounded-[3rem] border border-cyan-500/10 flex gap-6 relative overflow-hidden group">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/[0.05] rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-cyan-500/10 transition-colors" />
+           <Info className="text-cyan-500 shrink-0" size={32} />
+           <div className="relative z-10">
+             <h4 className="text-[10px] font-black text-cyan-500 dark:text-cyan-400 uppercase tracking-[0.2em] mb-2">NEURAL ENCRYPTION PROTOCOL</h4>
+             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic opacity-80">
+               Settlement data packets are AES-256 encrypted. Payout delays may occur if account identity signatures do not match neural records.
+             </p>
+           </div>
+        </section>
 
-           <section className="glass-card p-10 border-white/5 bg-white/[0.02] shadow-2xl relative overflow-hidden">
-              <div className="flex items-center gap-4 mb-8">
-                 <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center">
-                    <Zap size={24} className="text-pink-500" />
-                 </div>
-                 <h4 className="text-xs font-black uppercase tracking-widest text-white/60">Node Integrity</h4>
-              </div>
-              <div className="space-y-6">
-                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/30 font-black uppercase tracking-widest">KYC Status</span>
-                    <span className="text-emerald-400 font-bold uppercase italic">Verified</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/30 font-black uppercase tracking-widest">Network Tier</span>
-                    <span className="text-cyan-400 font-bold uppercase italic">Vanguard</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/30 font-black uppercase tracking-widest">Uptime</span>
-                    <span className="text-white font-bold uppercase italic">99.9%</span>
-                 </div>
-              </div>
-           </section>
-        </div>
+        <button 
+          onClick={() => signOut()}
+          className="w-full py-6 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/10 rounded-[2.5rem] text-rose-500 font-black text-[10px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 active:scale-[0.98] transition-all group"
+        >
+          <LogOut size={24} className="group-hover:rotate-12 transition-transform" />
+          TERMINATE CURRENT SESSION
+        </button>
       </div>
     </div>
   );
 }
+

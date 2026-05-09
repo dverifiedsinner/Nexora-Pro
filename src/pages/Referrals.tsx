@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Users, Gift, Share2, Copy, Check, TrendingUp, Award, Zap, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Users, Gift, Share2, Copy, Check, TrendingUp, Award, Zap, Loader2, ChevronRight, Info, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -59,173 +59,176 @@ export default function Referrals() {
   };
 
   const steps = [
-    { title: 'Share Link', desc: 'Copy and share your unique referral link with friends.', icon: Share2 },
-    { title: 'Friends Join', desc: 'Your friends sign up using your referral code.', icon: Users },
-    { title: 'Get Rewarded', desc: 'Earn ₦500 instantly in your referral wallet.', icon: Gift },
+    { title: 'Share Link', desc: 'Send your link to friends.', icon: Share2, color: 'bg-indigo-50 text-indigo-600' },
+    { title: 'Activation', desc: 'They register and sync account.', icon: Users, color: 'bg-emerald-50 text-emerald-600' },
+    { title: 'Get Paid', desc: 'Earn ₦500 instantly on sync.', icon: Gift, color: 'bg-rose-50 text-rose-600' },
   ];
 
   return (
-    <div className="space-y-8 pb-12">
-      <header>
-        <h1 className="text-3xl font-display font-bold">Referral Program</h1>
-        <p className="text-white/40">Invite your circle and build your passive income stream.</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pb-32 font-sans">
+      {/* Header */}
+      <header className="p-12 bg-slate-900 text-white rounded-b-[4rem] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2" />
+        <div className="relative z-10 space-y-10">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-black italic tracking-tighter uppercase">NETWORK <span className="text-cyan-400">EXPANSION</span></h1>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Neural Link Distribution Protocol</p>
+            </div>
+            <button className="p-4 bg-white/5 rounded-[1.5rem] border border-white/10 hover:bg-white/10 transition-all group">
+              <TrendingUp size={24} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="bg-slate-950/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/5 relative group overflow-hidden">
+                <div className="absolute inset-0 bg-cyan-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                <div className="relative z-10">
+                  <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] mb-2">Authenticated Nodes</p>
+                  <p className="text-5xl font-black italic tracking-tight tabular-nums">{referrals.length}</p>
+                </div>
+             </div>
+             <div className="bg-slate-950/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/5 relative group overflow-hidden">
+                <div className="absolute inset-0 bg-emerald-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                <div className="relative z-10">
+                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-2">Expansion Yield</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-black text-slate-500 italic">₦</span>
+                    <p className="text-5xl font-black italic tracking-tight tabular-nums">{userData?.balances?.referral?.toLocaleString() || '0'}</p>
+                  </div>
+                </div>
+             </div>
+          </div>
+        </div>
       </header>
 
-      {/* Rewards Overview */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="glass-card p-6 border-yellow-500/30 bg-yellow-500/5">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-yellow-500 rounded-2xl shadow-lg shadow-yellow-500/20">
-              <Award size={20} className="text-slate-950" />
-            </div>
-            <p className="text-[10px] uppercase font-black text-yellow-400 tracking-widest">Total Referrals</p>
-          </div>
-          <h2 className="text-4xl font-display font-bold">{referrals.length}</h2>
-          <p className="text-xs text-white/30 mt-1 font-medium italic">Active network size</p>
-        </div>
-        <div className="glass-card p-6 border-blue-500/30 bg-blue-500/5">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-blue-500 rounded-2xl shadow-lg shadow-blue-500/20">
-              <TrendingUp size={20} className="text-white" />
-            </div>
-            <p className="text-[10px] uppercase font-black text-blue-400 tracking-widest">Total Earned</p>
-          </div>
-          <h2 className="text-4xl font-display font-bold">₦{userData?.balances?.referral?.toLocaleString() || '0'}</h2>
-          <p className="text-xs text-white/30 mt-1 font-medium italic">Withdrawable rewards</p>
-        </div>
-        <div className="glass-card p-6 border-yellow-500/30 bg-yellow-500/5">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-yellow-500 rounded-2xl shadow-lg shadow-yellow-500/20">
-              <Gift size={20} className="text-slate-950" />
-            </div>
-            <p className="text-[10px] uppercase font-black text-yellow-400 tracking-widest">Rank Bonus</p>
-          </div>
-          <h2 className="text-4xl font-display font-bold">₦2,500</h2>
-          <p className="text-xs text-white/30 mt-1 font-medium italic">Next: Silver Tier ({Math.max(0, 5 - referrals.length)} left)</p>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-12 items-start">
-        {/* Referral Link Card */}
-        <section className="glass-card p-8 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-yellow-900/40 via-transparent to-transparent">
-          <h3 className="text-2xl font-display font-bold mb-6 italic">Secure Your Link</h3>
-          <p className="text-white/40 text-sm mb-10 leading-relaxed font-light">
-            Monetize your network. Copy this link and share it on your social media platforms. For each person who registers and activates their account, you'll receive <span className="text-yellow-400 font-bold">₦500</span>.
-          </p>
+      <div className="p-8 max-w-2xl mx-auto space-y-12">
+        {/* Referral Link */}
+        <section className="bg-white dark:bg-slate-900 rounded-[3.5rem] p-10 border border-slate-100 dark:border-slate-800/50 shadow-2xl shadow-slate-950/20 space-y-8 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/[0.03] rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
           
-          <div className="space-y-6">
-            <div className="relative">
-              <div className="bg-white/5 border border-white/5 rounded-2xl py-5 px-6 pr-20 text-yellow-300 font-mono text-sm truncate shadow-inner">
-                {referralLink}
-              </div>
-              <button 
-                onClick={handleCopy}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-4 bg-yellow-500 text-slate-950 hover:bg-yellow-400 rounded-xl transition-all active:scale-90 shadow-xl"
-              >
-                {copied ? <Check size={20} className="text-slate-950" /> : <Copy size={20} />}
-              </button>
+          <div className="flex items-center gap-5 relative z-10">
+            <div className="w-14 h-14 bg-cyan-500/10 text-cyan-500 rounded-[1.5rem] flex items-center justify-center border border-cyan-500/20">
+              <Zap size={28} />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black italic tracking-tight uppercase">Distribute Neural Link</h3>
+              <p className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Authorization Bonus: ₦500 per node</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed font-medium italic relative z-10">
+            Transmit your unique identification signature to prospective operatives. Earn ₦500 instantly upon successful node synchronization.
+          </p>
+
+          <div className="space-y-6 relative z-10">
+            <div className="flex flex-col sm:flex-row bg-slate-50 dark:bg-slate-950 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+               <div className="flex-1 px-6 py-4 text-[10px] font-black tracking-widest truncate text-slate-500 uppercase overflow-hidden">
+                 {referralLink}
+               </div>
+               <button 
+                 onClick={handleCopy}
+                 className="bg-slate-950 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
+               >
+                 {copied ? <CheckCircle size={18} /> : <><Copy size={18} /> COPY SIGNAL</>}
+               </button>
             </div>
             
-            <div className="flex flex-wrap gap-4 pt-4">
-               <button 
-                  onClick={() => window.open(`https://wa.me/?text=Check%20out%20NEXORA%21%20Use%20my%20link%20to%20join%20and%20earn%3A%20${encodeURIComponent(referralLink)}`, '_blank')}
-                  className="flex-1 btn-outline flex items-center justify-center gap-3 py-4 text-[10px] font-black uppercase tracking-widest shadow-xl"
-               >
-                 <Share2 size={16} /> WhatsApp
-               </button>
-               <button className="flex-1 btn-outline flex items-center justify-center gap-3 py-4 text-[10px] font-black uppercase tracking-widest shadow-xl">
-                 <Zap size={16} /> Marketing Kits
-               </button>
-            </div>
+            <button 
+              onClick={() => window.open(`https://wa.me/?text=Check%20out%20EarnPal%21%20Use%20my%20link%20to%20join%20and%20earn%3A%20${encodeURIComponent(referralLink)}`, '_blank')}
+              className="w-full py-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-4"
+            >
+              <Share2 size={24} /> BROADCAST VIA WHATSAPP
+            </button>
           </div>
         </section>
 
-        {/* Instructions */}
-        <section className="space-y-10">
-           <h3 className="text-2xl font-display font-bold tracking-tight uppercase tracking-widest text-xs opacity-40">The Blueprint</h3>
-           <div className="space-y-10">
-             {steps.map((step, i) => (
-               <div key={i} className="flex gap-8 items-start group">
-                 <div className="w-14 h-14 rounded-3xl border border-white/5 flex items-center justify-center shrink-0 font-display font-black text-2xl text-yellow-500 bg-yellow-500/5 group-hover:bg-yellow-500/10 group-hover:rotate-6 transition-all duration-500">
-                   {i + 1}
+        {/* Steps */}
+        <section className="space-y-8">
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] px-4">Propagation Sequence</h3>
+          <div className="grid grid-cols-1 gap-6">
+            {steps.map((step, i) => (
+              <div key={i} className="flex items-center gap-6 p-8 bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800/50 shadow-2xl shadow-slate-950/10 group hover:border-cyan-500/30 transition-all">
+                 <div className={`w-20 h-20 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-800 transition-transform group-hover:scale-110 duration-500`}>
+                   <step.icon size={32} className={i === 0 ? 'text-cyan-500' : i === 1 ? 'text-emerald-500' : 'text-rose-500'} />
                  </div>
-                 <div className="space-y-1 pt-2">
-                   <h4 className="font-display font-bold text-xl group-hover:text-yellow-200 transition-colors">{step.title}</h4>
-                   <p className="text-sm text-white/40 leading-relaxed font-light">{step.desc}</p>
+                 <div className="flex-1">
+                   <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-500 mb-1">{step.title}</h4>
+                   <p className="text-sm font-black italic tracking-tight">{step.desc}</p>
                  </div>
-               </div>
-             ))}
-           </div>
-
-           <div className="glass-card p-6 border-blue-500/20 bg-blue-500/5 mt-10">
-              <div className="flex gap-4 items-start">
-                <Zap size={20} className="text-blue-400 shrink-0 mt-1" />
-                <p className="text-xs text-white/40 leading-relaxed italic font-light">
-                  <span className="text-blue-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Anti-Fraud Protocol</span>
-                  Multiple account creation is strictly forbidden. Our AI-driven detection system will automatically suspend accounts found cheating the referral system.
-                </p>
+                 <div className="text-slate-100 dark:text-slate-800 font-black text-6xl italic opacity-50 group-hover:opacity-100 transition-opacity drop-shadow-sm select-none">0{i+1}</div>
               </div>
-           </div>
+            ))}
+          </div>
         </section>
-      </div>
 
-      {/* Network List */}
-      <section className="pt-10">
-        <div className="flex items-center justify-between mb-8 px-1">
-          <h3 className="text-2xl font-display font-bold">Network Activity</h3>
-          <div className="h-0.5 flex-1 bg-white/5 mx-8 rounded-full"></div>
-          <button className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 hover:text-white transition-all">VIEW ALL</button>
+        {/* Activity Table */}
+        <section className="bg-white dark:bg-slate-900 rounded-[4rem] border border-slate-100 dark:border-slate-800/50 shadow-2xl shadow-slate-950/20 overflow-hidden flex flex-col relative">
+          <div className="absolute inset-0 bg-cyan-500/[0.01] pointer-events-none" />
+          <div className="p-10 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center relative z-10">
+            <h3 className="text-2xl font-black italic tracking-tight uppercase flex items-center gap-4">
+              <Users className="text-cyan-500" size={28} />
+              Operative Log
+            </h3>
+            {referrals.length > 0 && <span className="text-[10px] bg-cyan-500 border border-cyan-400 text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg">{referrals.length} ACTIVE</span>}
+          </div>
+
+          <div className="flex-1 min-h-[400px] relative z-10">
+            {loading ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="animate-spin text-cyan-500" size={48} />
+              </div>
+            ) : referrals.length > 0 ? (
+              <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                {referrals.map((row, i) => (
+                  <div key={i} className="p-10 flex items-center justify-between group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border-l-4 border-transparent hover:border-cyan-500">
+                    <div className="flex items-center gap-6">
+                       <div className="w-16 h-16 rounded-[1.5rem] bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-black italic text-xl border border-cyan-500/20 shadow-inner group-hover:scale-110 transition-transform">
+                         {(row.displayName || 'UX').substring(0, 2).toUpperCase()}
+                       </div>
+                       <div>
+                         <h4 className="font-black text-lg italic tracking-tight text-slate-800 dark:text-white uppercase">{row.displayName || 'ANONYMOUS NODE'}</h4>
+                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1 tabular-nums">
+                           LINKED: {row.createdAt?.toDate ? row.createdAt.toDate().toLocaleDateString() : (row.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'REAL-TIME')}
+                         </p>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <div className="flex items-baseline gap-1 justify-end">
+                         <span className="text-xs font-black text-emerald-500">₦</span>
+                         <p className="text-2xl font-black italic tracking-tight text-emerald-500 tabular-nums">500</p>
+                       </div>
+                       <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest italic opacity-60">BONUS ACCRUED</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-12 space-y-8">
+                <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] flex items-center justify-center border border-slate-100 dark:border-slate-800 transition-transform group-hover:scale-110">
+                  <Users className="text-slate-200 dark:text-slate-800" size={56} />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-black text-xl italic uppercase">Expansion Log Empty</h4>
+                  <p className="text-[10px] font-black tracking-widest text-slate-400 max-w-xs uppercase">No operatives detected in your propagation network.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Security Clause */}
+        <div className="p-10 bg-rose-500/[0.02] dark:bg-rose-500/[0.05] rounded-[3rem] border border-rose-500/10 flex gap-6 relative overflow-hidden group">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/[0.05] rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-rose-500/10 transition-colors" />
+           <Info className="text-rose-500 shrink-0" size={32} />
+           <div className="relative z-10">
+             <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mb-3">ANTI-FRAUD PROTOCOL</h4>
+             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic opacity-80">
+               Automated node generation is strictly prohibited. Our neural heuristic system identifies and terminates shadow nodes attempting to manipulate the propagation system.
+             </p>
+           </div>
         </div>
-        
-        <div className="glass-card overflow-hidden border-white/5 min-h-[200px] flex flex-col items-center justify-center">
-          {loading ? (
-            <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
-          ) : referrals.length > 0 ? (
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-white/[0.02] text-white/30 font-black text-[10px] uppercase tracking-[0.2em]">
-                    <th className="px-8 py-6">Identity</th>
-                    <th className="px-8 py-6 text-center">Timestamp</th>
-                    <th className="px-8 py-6 text-center">Status</th>
-                    <th className="px-8 py-6 text-right">Commission</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.02]">
-                  {referrals.map((row, i) => (
-                    <tr key={i} className="hover:bg-white/[0.01] transition-colors cursor-default group">
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-[10px] font-bold border border-white/5 group-hover:border-yellow-500/30 group-hover:bg-yellow-500/5 transition-all">
-                             {(row.displayName || 'UX').substring(0, 2).toUpperCase()}
-                           </div>
-                           <span className="font-bold text-white/80 group-hover:text-white transition-all">{row.displayName || 'Anonymous'}</span>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6 text-center text-xs text-white/30 font-medium">
-  {row.createdAt?.toDate ? row.createdAt.toDate().toLocaleDateString() : (row.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'N/A')}
-</td>
-                      <td className="px-8 py-6 text-center">
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-yellow-500/10 text-yellow-400`}>
-                          Active
-                        </span>
-                      </td>
-                      <td className="px-8 py-6 text-right font-display font-black text-yellow-400 text-lg group-hover:scale-105 transition-transform origin-right">
-                        ₦500
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-12 text-center space-y-4">
-              <Users className="w-12 h-12 text-white/10 mx-auto" />
-              <p className="text-sm text-white/20 uppercase font-black tracking-widest italic">No network nodes connected yet.</p>
-            </div>
-          )}
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

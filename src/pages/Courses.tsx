@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Award, Clock, Star, Zap, ChevronRight, 
   Search, Filter, AlertCircle, Check, ArrowRight, 
-  Loader2, ShieldAlert, Plus, Play 
+  Loader2, ShieldAlert, Plus, Play, X, ShieldCheck 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
@@ -41,7 +41,7 @@ export default function Courses() {
   const enrollInCourse = async (course: any) => {
     if (!user || !userData) return;
     if ((userData.balances?.main || 0) < course.price) {
-      alert('INSUFFICIENT_LIQUIDITY: Top up main wallet to join protocol.');
+      alert('Insufficient Balance: Please top up your main wallet to enroll.');
       return;
     }
 
@@ -49,25 +49,24 @@ export default function Courses() {
     try {
       await runTransaction(db, async (transaction) => {
         const userDoc = await transaction.get(doc(db, 'users', user.uid));
-        if (!userDoc.exists()) throw new Error("User node not found");
+        if (!userDoc.exists()) throw new Error("User profile not found");
 
         const userBalances = userDoc.data().balances || {};
         const activeCourses = userDoc.data().activeCourses || [];
 
-        if (activeCourses.includes(course.id)) throw new Error("Node already synchronized with this module");
+        if (activeCourses.includes(course.id)) throw new Error("Already enrolled in this course");
 
         transaction.update(doc(db, 'users', user.uid), {
           'balances.main': userBalances.main - course.price,
           activeCourses: [...activeCourses, course.id]
         });
 
-        // Add transaction record
         const transRef = doc(collection(db, 'transactions'));
         transaction.set(transRef, {
           userId: user.uid,
           userName: userData.displayName,
           type: 'course_purchase',
-          title: `SYNC: ${course.title}`,
+          title: `Enrolled: ${course.title}`,
           amount: -course.price,
           status: 'settled',
           createdAt: serverTimestamp()
@@ -76,7 +75,7 @@ export default function Courses() {
 
       await refreshUserData();
       setSelectedCourse(course);
-      alert('PROTOCOL_SYNCHRONIZED');
+      alert('Successfully enrolled!');
     } catch (error: any) {
       alert(error.message);
     } finally {
@@ -87,7 +86,7 @@ export default function Courses() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="animate-spin text-ink dark:text-white" size={48} />
+        <Loader2 className="animate-spin text-indigo-600" size={48} />
       </div>
     );
   }
@@ -98,32 +97,32 @@ export default function Courses() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-ink dark:text-white pb-24">
-      {/* Brutalist Hero Header */}
-      <div className="bg-ink text-yellow-400 border-b-4 border-ink p-10 md:p-16 relative overflow-hidden">
-        <div className="relative z-10 space-y-6">
-          <span className="text-[10px] font-mono font-black uppercase tracking-[0.5em] opacity-40">KNOWLEDGE_EXTRACTION_PROTOCOLS</span>
-          <h2 className="text-6xl md:text-8xl font-display font-black tracking-tighter uppercase italic leading-none">INTEL<br />MODULES.</h2>
-          <div className="flex flex-col md:flex-row gap-8 items-start md:items-end justify-between">
-            <p className="max-w-xl text-xs md:text-sm font-mono font-bold leading-relaxed opacity-80">
-              Synchronize your neural network with high-tier technical curriculum. Complete modules, verify knowledge via protocols, and extract rewards from the distributed ledger.
-            </p>
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-yellow-400/40" size={20} />
-              <input 
-                type="text" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="SEARCH_INTEL_INDEX..."
-                className="w-full bg-white/5 border-4 border-yellow-400 p-5 pl-16 font-black text-xs uppercase focus:outline-none focus:bg-white/10"
-              />
-            </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pb-32 font-sans">
+      {/* Header */}
+      <header className="p-10 bg-slate-900 text-white rounded-b-[3.5rem] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/3" />
+        <div className="relative z-10 space-y-8">
+          <div>
+            <h1 className="text-4xl font-black italic tracking-tighter">ACADEMY <span className="text-cyan-400">PRO</span></h1>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Neural Asset Education Portal</p>
+          </div>
+
+          <div className="relative group max-w-xl">
+             <div className="absolute inset-0 bg-cyan-500/10 blur-xl group-focus-within:bg-cyan-500/20 transition-all rounded-[2rem]" />
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
+            <input 
+              type="text" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Filter Curriculum Modules..."
+              className="w-full bg-white/5 border border-white/10 p-6 pl-16 rounded-[2rem] font-bold text-sm focus:outline-none focus:ring-1 ring-cyan-500/30 transition-all placeholder:text-slate-600"
+            />
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-[1400px] mx-auto p-6 md:p-12">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
+      <div className="p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredCourses.map((course, i) => {
             const isActive = userData?.activeCourses?.includes(course.id);
             const isCompleted = userData?.completedCourses?.includes(course.id);
@@ -131,59 +130,63 @@ export default function Courses() {
             return (
               <motion.div 
                 key={course.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
-                className="border-4 border-ink dark:border-white bg-white dark:bg-slate-900 group hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[12px_12px_0px_0px_rgba(255,255,255,1)] transition-all flex flex-col"
+                className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800/50 overflow-hidden flex flex-col shadow-2xl shadow-slate-950/5 group hover:border-cyan-500/30 transition-all"
               >
-                <div className="h-56 overflow-hidden border-b-4 border-ink dark:border-white relative grayscale group-hover:grayscale-0 transition-all duration-700">
-                  <img src={course.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
-                  <div className="absolute top-4 right-4 bg-yellow-400 text-ink border-4 border-ink p-3 scale-110 group-hover:scale-125 transition-transform">
-                    <p className="text-[10px] font-black uppercase leading-none opacity-40">FEE</p>
-                    <p className="text-xl font-display font-black leading-none">₦{course.price.toLocaleString()}</p>
+                <div className="h-56 relative overflow-hidden">
+                  <img src={course.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 grayscale group-hover:grayscale-0" alt="" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent opacity-60" />
+                  <div className="absolute top-6 right-6 bg-slate-950/60 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 shadow-2xl">
+                    <p className="text-xl font-black italic tracking-tight text-white line-through decoration-cyan-400/50 text-opacity-40 text-xs mb-0.5">₦{(course.price * 1.5).toLocaleString()}</p>
+                    <p className="text-2xl font-black italic tracking-tight text-white">₦{course.price.toLocaleString()}</p>
                   </div>
                   {isCompleted && (
-                    <div className="absolute inset-0 bg-ink/60 flex items-center justify-center">
-                      <div className="bg-emerald-500 text-white border-4 border-white p-4 rotate-[-10deg] font-display font-black uppercase text-2xl">COMPLETED</div>
+                    <div className="absolute inset-0 bg-cyan-500/90 backdrop-blur-sm flex items-center justify-center p-6 text-center">
+                       <div className="space-y-2">
+                          <ShieldCheck size={48} className="mx-auto text-white" />
+                          <div className="bg-white text-slate-900 px-6 py-2 rounded-xl font-black text-xs tracking-widest">VERIFIED COMPLETED</div>
+                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="p-8 space-y-6 flex-1 flex flex-col justify-between">
+                <div className="p-8 flex-1 flex flex-col gap-8">
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-mono font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">/{course.category || 'GENERAL'}</span>
-                      <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] px-3 py-1 bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full border border-cyan-500/20">{course.category || 'General'}</span>
+                      <div className="flex items-center gap-1.5 p-1 px-2 border border-slate-100 dark:border-slate-800 rounded-lg">
                         <Star size={12} className="fill-yellow-400 text-yellow-400" />
                         <span className="text-[10px] font-black">{course.rating || '4.9'}</span>
                       </div>
                     </div>
-                    <h3 className="text-4xl font-display font-black uppercase italic tracking-tighter leading-none">{course.title}</h3>
-                    <p className="text-xs font-mono font-bold opacity-60 line-clamp-2">{course.description || 'Module details restricted to registered operators.'}</p>
+                    <h3 className="text-2xl font-black leading-tight italic tracking-tighter group-hover:text-cyan-400 transition-colors uppercase">{course.title}</h3>
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed font-medium">{course.description}</p>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4 py-6 border-y-2 border-ink/5 dark:border-white/5">
-                      <div>
-                        <p className="text-[8px] font-black opacity-40 uppercase mb-1">MODULE_REWARD</p>
-                        <p className="text-xl font-display font-black text-emerald-600">₦{(course.price * 3.5).toLocaleString()}</p>
+                  <div className="mt-auto space-y-8">
+                    <div className="grid grid-cols-2 gap-6 pb-2">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Terminal Yield</p>
+                        <p className="text-xl font-black italic tracking-tight text-emerald-500">₦{(course.price * 3.5).toLocaleString()}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[8px] font-black opacity-40 uppercase mb-1">STAKED_NODES</p>
-                        <p className="text-xl font-display font-black">{(course.members || 1240).toLocaleString()}</p>
+                      <div className="text-right space-y-1">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Network Load</p>
+                        <p className="text-xl font-black italic tracking-tight">{(course.members || 1240).toLocaleString()}</p>
                       </div>
                     </div>
 
                     <button 
                       onClick={() => isCompleted ? setSelectedCourse(course) : (isActive ? setSelectedCourse(course) : enrollInCourse(course))}
                       disabled={isEnrolling}
-                      className={`w-full py-5 font-black text-xs uppercase tracking-widest transition-all skew-x-[-10deg] group/btn ${
-                        isActive ? 'bg-ink text-white' : 'bg-yellow-400 text-ink border-4 border-ink'
+                      className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 ${
+                        isActive 
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl' 
+                          : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border border-transparent active:scale-[0.98]'
                       }`}
                     >
-                      <span className="skew-x-[10deg] flex items-center justify-center gap-3">
-                        {isEnrolling ? <Loader2 className="animate-spin" /> : (isActive ? (<><Play size={18} fill="currentColor" /> RESUME_SYNC</>) : 'SYNCHRONIZE_NODE')}
-                      </span>
+                      {isEnrolling ? <Loader2 className="animate-spin" size={20} /> : (isActive ? (<><Play size={18} fill="currentColor" /> Access Module</>) : 'Initialize Enrollment')}
                     </button>
                   </div>
                 </div>
@@ -195,114 +198,131 @@ export default function Courses() {
 
       <AnimatePresence>
         {selectedCourse && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-ink/95 backdrop-blur-xl">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-slate-950/80 backdrop-blur-md"
+          >
              <motion.div 
-               initial={{ scale: 0.9, opacity: 0 }}
-               animate={{ scale: 1, opacity: 1 }}
-               exit={{ scale: 0.9, opacity: 0 }}
-               className="w-full max-w-5xl bg-white border-[8px] border-ink p-8 md:p-16 flex flex-col gap-12 overflow-y-auto max-h-[90vh]"
+               initial={{ y: 100 }}
+               animate={{ y: 0 }}
+               exit={{ y: 100 }}
+               className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-t-[3rem] md:rounded-[3rem] overflow-hidden flex flex-col max-h-[90vh]"
              >
-                <div className="flex justify-between items-start">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
                   <div>
-                    <span className="text-[10px] font-mono font-black text-blue-600 uppercase tracking-widest">PROTOCOL_ACTIVE: {selectedCourse.id}</span>
-                    <h3 className="text-5xl font-display font-black uppercase italic tracking-tighter leading-none mt-2">{selectedCourse.title}</h3>
+                    <h2 className="text-2xl font-bold">{selectedCourse.title}</h2>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{selectedCourse.category}</p>
                   </div>
-                  <button onClick={() => { setSelectedCourse(null); setIsQuizzing(false); }} className="p-4 border-4 border-ink hover:bg-ink hover:text-white transition-all"><Plus className="rotate-45" size={48} /></button>
+                  <button 
+                    onClick={() => { setSelectedCourse(null); setIsQuizzing(false); }} 
+                    className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 transition-all"
+                  >
+                    <X size={24} />
+                  </button>
                 </div>
 
-                {!isQuizzing ? (
-                  <div className="grid md:grid-cols-[1fr_300px] gap-12">
-                    <div className="space-y-12">
-                      <div className="prose prose-slate max-w-none">
-                         <div className="p-10 bg-slate-50 border-l-[12px] border-ink space-y-6">
-                            <h4 className="text-xl font-display font-black uppercase tracking-tight italic border-b-2 border-ink/5 pb-2">CURRICULUM_INTEL</h4>
-                            <p className="font-mono text-sm leading-relaxed">{selectedCourse.description}</p>
+                <div className="flex-1 overflow-y-auto p-8">
+                  {!isQuizzing ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      <div className="lg:col-span-2 space-y-8">
+                        <section className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+                          <h4 className="text-sm font-bold uppercase tracking-widest text-indigo-600 mb-4">Module Content</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{selectedCourse.description}</p>
+                        </section>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {(selectedCourse.articles || []).map((art: any, i: number) => (
+                            <div key={i} className="p-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-4 group">
+                              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 flex items-center justify-center font-black">{i+1}</div>
+                              <h5 className="font-bold text-sm leading-tight group-hover:text-indigo-600 transition-colors uppercase">{art.title}</h5>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                         <div className="p-8 bg-indigo-600 text-white rounded-3xl shadow-xl shadow-indigo-600/20 space-y-6">
+                            <div className="flex items-center gap-3">
+                              <Award size={24} />
+                              <h4 className="font-bold">Final Assessment</h4>
+                            </div>
+                            <p className="text-xs text-indigo-100 leading-relaxed">
+                              Pass the certification quiz with at least 80% to unlock your reward of ₦{(selectedCourse.price * 3.5).toLocaleString()}.
+                            </p>
+                            <button 
+                              onClick={() => setIsQuizzing(true)}
+                              className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-bold shadow-xl active:scale-95 transition-all"
+                            >
+                              Take Quiz
+                            </button>
+                         </div>
+
+                         <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 flex flex-col items-center gap-3">
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Enrollment Status</p>
+                            <div className="flex gap-1 w-full px-4">
+                               {[...Array(6)].map((_, i) => (
+                                 <div key={i} className={`h-1.5 flex-1 rounded-full ${i < 4 ? 'bg-emerald-500' : 'bg-emerald-200 dark:bg-emerald-900/50'}`} />
+                               ))}
+                            </div>
+                            <p className="text-[10px] font-bold text-emerald-600">4 of 6 Lessons Completed</p>
                          </div>
                       </div>
-                      
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                        {(selectedCourse.articles || []).map((art: any, i: number) => (
-                          <div key={i} className="p-8 border-4 border-ink bg-slate-50 relative group">
-                            <span className="absolute -top-4 -left-4 w-12 h-12 bg-ink text-white flex items-center justify-center font-black">{i+1}</span>
-                            <h5 className="font-display font-black uppercase text-xl leading-tight mb-4">{art.title}</h5>
-                            <p className="text-[10px] font-mono font-bold opacity-40 uppercase">DATA_PACKET_{i+1}</p>
-                          </div>
-                        ))}
-                      </div>
                     </div>
+                  ) : (
+                    <div className="max-w-2xl mx-auto w-full pb-12">
+                      <Quiz 
+                        courseId={selectedCourse.id} 
+                        courseTitle={selectedCourse.title}
+                        rewardGoal={selectedCourse.price ? selectedCourse.price * 0.1 : 500}
+                        questions={selectedCourse.questions || []}
+                        onCancel={() => setSelectedCourse(null)}
+                        onComplete={async (score) => {
+                          const pass = score >= 80;
+                          if(pass && !userData?.completedCourses?.includes(selectedCourse.id)) {
+                            try {
+                              await runTransaction(db, async (transaction) => {
+                                const userRef = doc(db, 'users', user.uid);
+                                const userSnap = await transaction.get(userRef);
+                                const uData = userSnap.data();
+                                const currentReferral = uData?.balances?.referral || 0;
+                                const completed = uData?.completedCourses || [];
 
-                    <div className="space-y-8">
-                       <div className="p-10 border-4 border-ink bg-yellow-400 space-y-6">
-                          <h4 className="text-xs font-black uppercase tracking-widest border-b-2 border-ink text-ink pb-4">TERMINAL_ACTIONS</h4>
-                          <p className="text-[10px] font-mono font-bold leading-relaxed">
-                            Verify completion of module by initiating the verification protocol. Success results in instant reward distribution.
-                          </p>
-                          <button 
-                            onClick={() => setIsQuizzing(true)}
-                            className="w-full py-5 bg-ink text-white font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-[6px_6px_0px_0px_rgba(255,255,255,0.4)]"
-                          >
-                            INITIATE_QUIZ
-                          </button>
-                       </div>
+                                transaction.update(userRef, {
+                                  'balances.referral': currentReferral + (selectedCourse.price * 3.5),
+                                  completedCourses: [...completed, selectedCourse.id]
+                                });
 
-                       <div className="p-8 border-4 border-ink space-y-4">
-                          <p className="text-[10px] font-black uppercase opacity-40">NODE_HEALTH</p>
-                          <div className="flex gap-2">
-                             {[...Array(6)].map((_, i) => (
-                               <div key={i} className={`h-2 flex-1 border-2 border-ink ${i < 4 ? 'bg-emerald-500' : 'bg-slate-100'}`} />
-                             ))}
-                          </div>
-                          <p className="text-[8px] font-mono font-black italic">INTEGRITY: HIGH</p>
-                       </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="max-w-3xl mx-auto w-full">
-                    <Quiz 
-                      course={selectedCourse} 
-                      onComplete={async (score) => {
-                        const pass = score >= 80;
-                        if(pass && !userData?.completedCourses?.includes(selectedCourse.id)) {
-                          try {
-                            await runTransaction(db, async (transaction) => {
-                              const userRef = doc(db, 'users', user.uid);
-                              const userSnap = await transaction.get(userRef);
-                              const uData = userSnap.data();
-                              const currentReferral = uData?.balances?.referral || 0;
-                              const completed = uData?.completedCourses || [];
-
-                              transaction.update(userRef, {
-                                'balances.referral': currentReferral + (selectedCourse.price * 3.5),
-                                completedCourses: [...completed, selectedCourse.id]
+                                const transRef = doc(collection(db, 'transactions'));
+                                transaction.set(transRef, {
+                                  userId: user.uid,
+                                  type: 'course_yield',
+                                  title: `Certification Reward: ${selectedCourse.title}`,
+                                  amount: selectedCourse.price * 3.5,
+                                  status: 'settled',
+                                  createdAt: serverTimestamp()
+                                });
                               });
-
-                              const transRef = doc(collection(db, 'transactions'));
-                              transaction.set(transRef, {
-                                userId: user.uid,
-                                type: 'course_yield',
-                                title: `YIELD: ${selectedCourse.title}`,
-                                amount: selectedCourse.price * 3.5,
-                                status: 'settled',
-                                createdAt: serverTimestamp()
-                              });
-                            });
-                            await refreshUserData();
-                            alert(`PROTOCOLSUCCESS: Yield of ₦${(selectedCourse.price * 3.5).toLocaleString()} processed to referral vault.`);
-                          } catch(e) {
-                            console.error(e);
+                              await refreshUserData();
+                              alert(`Congratulations! You passed. Reward of ₦${(selectedCourse.price * 3.5).toLocaleString()} has been added to your referral vault.`);
+                            } catch(e) {
+                              console.error(e);
+                            }
+                          } else if(!pass) {
+                             alert('Failed: You need at least 80% to pass. Please review the course and try again.');
                           }
-                        } else if(!pass) {
-                           alert('PROTOCOL_FAILED: Knowledge threshold below 80%. Re-sync required.');
-                        }
-                        setIsQuizzing(false);
-                      }} 
-                    />
-                  </div>
-                )}
+                          setIsQuizzing(false);
+                        }} 
+                      />
+                    </div>
+                  )}
+                </div>
              </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 }
+

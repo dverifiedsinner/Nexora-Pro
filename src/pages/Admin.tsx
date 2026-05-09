@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, Zap, CreditCard, BookOpen, CheckSquare, Settings as SettingsIcon,
   Plus, Search, ShieldCheck, Trash2, Loader2, Link as LinkIcon,
