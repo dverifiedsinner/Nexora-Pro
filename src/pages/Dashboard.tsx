@@ -14,7 +14,9 @@ import {
   BookOpen,
   LogOut,
   Shield,
-  Gamepad2
+  Gamepad2,
+  Smartphone,
+  Wifi
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -81,7 +83,7 @@ export default function Dashboard() {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 relative px-2">
         <div className="z-10 text-center md:text-left">
           <h2 className="text-2xl md:text-4xl font-display font-black tracking-tight leading-tight mb-2 text-gradient">Welcome, {userData?.displayName?.split(' ')[0]} 👋</h2>
-          <p className="text-white/40 text-[9px] md:text-sm font-light italic uppercase tracking-widest">Your digital empire is ready for expansion.</p>
+          <p className="text-slate-500 dark:text-white/40 text-[9px] md:text-sm font-light italic uppercase tracking-widest">Your digital empire is ready for expansion.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 md:gap-4 z-10">
           {(userData?.isAdmin || userData?.email === 'denacchy@gmail.com') && (
@@ -107,8 +109,8 @@ export default function Dashboard() {
       {/* Quick Action Icons (Modern 3D Style) */}
       <section className="px-2 lg:px-0">
         <div className="flex items-center justify-between mb-8">
-           <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40">Core Protocol Nodes</h4>
-           <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent ml-8"></div>
+           <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 dark:text-white/40">Core Protocol Nodes</h4>
+           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-white/10 to-transparent ml-8"></div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
@@ -162,15 +164,80 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Swap Protocol Terminal (NEW) */}
+      <section className="px-2 lg:px-0">
+        <div className="flex items-center justify-between mb-8">
+           <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 dark:text-white/40">Asset Swap Protocol</h4>
+           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-white/10 to-transparent ml-8"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Main Swap Card */}
+          <div className="glass-card p-8 md:p-10 bg-gradient-to-br from-yellow-500/5 via-transparent to-transparent border-yellow-500/10 group overflow-hidden relative">
+            <div className="relative z-10 flex flex-col h-full justify-between gap-8">
+              <div className="space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-yellow-400/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20 group-hover:scale-110 transition-transform">
+                  <TrendingUp size={28} />
+                </div>
+                <div>
+                  <h3 className="text-2xl md:text-3xl font-display font-black uppercase italic tracking-tighter">Universal Swap.</h3>
+                  <p className="text-sm text-slate-500 dark:text-white/30 font-medium leading-relaxed max-w-xs mt-2">
+                    Convert your platform earnings into liquid assets across all major Nigerian networks and utility providers.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <Link to="/wallet" className="flex items-center justify-center gap-2 py-4 rounded-xl bg-yellow-500 text-slate-950 font-black text-[10px] uppercase tracking-widest shadow-xl shadow-yellow-500/20 active:scale-95 transition-all">
+                  Swap Now <ArrowUpRight size={14} />
+                </Link>
+                <div className="flex -space-x-2 items-center px-2">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full border-2 border-white/10 bg-slate-800 flex items-center justify-center overflow-hidden">
+                      <div className={`w-full h-full bg-gradient-to-br ${i % 2 === 0 ? 'from-yellow-400 to-yellow-600' : 'from-blue-400 to-blue-600'}`} />
+                    </div>
+                  ))}
+                  <span className="text-[9px] font-bold text-slate-500 ml-4">+4 Networks</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Background Decorative Element */}
+            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-yellow-500/20 transition-all"></div>
+          </div>
+
+          {/* Quick Categories */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { name: 'Airtime', icon: Smartphone, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+              { name: 'Data', icon: Wifi, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+              { name: 'Cable TV', icon: Zap, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+              { name: 'Utility', icon: Shield, color: 'text-emerald-400', bg: 'bg-emerald-400/10' }
+            ].map((cat, i) => (
+              <Link 
+                key={i}
+                to="/wallet"
+                className="glass-card p-6 flex flex-col items-center justify-center gap-4 hover:border-white/20 transition-all group"
+              >
+                <div className={`w-12 h-12 rounded-xl ${cat.bg} flex items-center justify-center ${cat.color} group-hover:scale-110 transition-transform`}>
+                  <cat.icon size={24} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40 group-hover:text-white transition-colors">{cat.name}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Featured Courses Carousel (Full-Bleed style) */}
-      <section className="-mx-6 md:-mx-12 overflow-hidden transition-colors duration-1000 bg-gradient-to-r from-blue-900/10 via-black to-yellow-900/10 py-12">
+      <section className="-mx-6 md:-mx-12 overflow-hidden transition-all duration-1000 bg-gradient-to-r from-blue-900/10 via-slate-200 dark:via-black to-yellow-900/10 py-12">
         <div className="max-w-7xl mx-auto px-6 md:px-12 space-y-10">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h3 className="text-3xl md:text-5xl font-display font-black tracking-tighter uppercase italic">Hot Nodes.</h3>
-              <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.3em]">Top Tier Earning Modules</p>
+              <p className="text-slate-400 dark:text-white/30 text-[10px] font-black uppercase tracking-[0.3em]">Top Tier Earning Modules</p>
             </div>
-            <Link to="/courses" className="h-14 w-14 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-yellow-400 hover:border-yellow-400 transition-all group">
+            <Link to="/courses" className="h-14 w-14 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 dark:text-white/40 hover:text-yellow-500 hover:border-yellow-500 transition-all group">
               <ArrowUpRight size={24} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
             </Link>
           </div>
@@ -280,8 +347,8 @@ export default function Dashboard() {
       {/* Featured Courses Carousel */}
       <section className="space-y-6">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xl font-display font-black italic tracking-tight uppercase tracking-widest text-xs opacity-40">Featured Curriculum</h3>
-          <Link to="/courses" className="text-[10px] font-black text-yellow-400 hover:text-yellow-300 tracking-[0.2em] uppercase flex items-center gap-2">
+          <h3 className="text-xl font-display font-black italic tracking-tight uppercase tracking-widest text-xs opacity-40 text-slate-500 dark:text-white">Featured Curriculum</h3>
+          <Link to="/courses" className="text-[10px] font-black text-yellow-500 dark:text-yellow-400 hover:text-yellow-600 dark:hover:text-yellow-300 tracking-[0.2em] uppercase flex items-center gap-2">
             View All <ChevronRight size={14} />
           </Link>
         </div>

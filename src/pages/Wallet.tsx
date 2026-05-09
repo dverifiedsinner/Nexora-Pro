@@ -30,8 +30,14 @@ export default function Wallet() {
   const { user, userData } = useAuth();
   const [activeTab, setActiveTab] = React.useState<'recharge' | 'withdraw' | 'conversion'>('recharge');
   const [transactions, setTransactions] = React.useState<any[]>([]);
-  const [conversionType, setConversionType] = React.useState<'airtime' | 'data'>('airtime');
+  const [conversionType, setConversionType] = React.useState<'airtime' | 'data' | 'cable' | 'electricity'>('airtime');
   const [network, setNetwork] = React.useState<string>('MTN');
+  
+  // Utility States
+  const [utilityService, setUtilityService] = React.useState<string>('');
+  const [billersCode, setBillersCode] = React.useState<string>('');
+  const [isVerifying, setIsVerifying] = React.useState(false);
+  const [verifiedName, setVerifiedName] = React.useState<string | null>(null);
   
   // Form states
   const [rechargeAmount, setRechargeAmount] = React.useState<string>('');
@@ -188,15 +194,52 @@ export default function Wallet() {
     }
   };
 
+  const handleVerify = async () => {
+    if (!utilityService || !billersCode) return;
+    setIsVerifying(true);
+    setVerifiedName(null);
+    try {
+      const response = await fetch('/api/vtu/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceID: utilityService,
+          billersCode,
+          type: (utilityService === 'dstv' || utilityService === 'gotv') ? 'showmax' : undefined // VTpass specific
+        })
+      });
+      const result = await response.json();
+      if (result.code === '000') {
+        setVerifiedName(result.content.Customer_Name || result.content.error || 'Identity Verified');
+      } else {
+        alert(result.response_description || "Verification failed. Check ID.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handleConvert = async () => {
-    if (!user || !userData || !convertPhone) {
-      alert("Please provide a valid receiver link.");
-      return;
+    if (!user || !userData) return;
+
+    if (conversionType === 'airtime' || conversionType === 'data') {
+      if (!convertPhone) {
+        alert("Please provide a valid receiver link.");
+        return;
+      }
+    } else {
+      if (!billersCode || !utilityService) {
+        alert("Please provide billing details.");
+        return;
+      }
     }
     
     const sanitizedValue = convertValue.replace(/[^0-9.]/g, '');
-    const finalAmount = conversionType === 'airtime' ? Number(sanitizedValue) : dataPackage.price;
-    if (isNaN(finalAmount)) {
+    const finalAmount = conversionType === 'data' ? dataPackage.price : Number(sanitizedValue);
+    
+    if (isNaN(finalAmount) || finalAmount <= 0) {
       alert("Invalid conversion amount.");
       return;
     }
@@ -215,23 +258,77 @@ export default function Wallet() {
         [convertWallet]: balance - finalAmount
       };
       
+      let serviceID = '';
+      if (conversionType === 'airtime' || conversionType === 'data') {
+        const networkMap: Record<string, string> = {
+          'MTN': 'mtn',
+          'AIRTEL': 'airtel',
+          'GLO': 'glo',
+          '9MOBILE': '9mobile'
+        };
+        serviceID = conversionType === 'airtime' ? networkMap[network] : `${networkMap[network]}-data`;
+      } else {
+        serviceID = utilityService;
+      }
+
       const transactionData = {
         userId: user.uid,
         userName: userData.displayName,
         userEmail: user.email,
-        type: 'task', // Closest match in Transaction enum: funding, withdrawal, bonus, referral, task, investment
+        type: 'task', 
         title: `${conversionType.toUpperCase()} SWAP`,
         amount: -finalAmount,
         createdAt: serverTimestamp(),
         status: 'pending',
         walletType: convertWallet,
-        description: `${conversionType === 'airtime' ? 'Airtime' : 'Data'} sent to ${convertPhone}`
+        description: conversionType === 'airtime' || conversionType === 'data' 
+          ? `${conversionType === 'airtime' ? 'Airtime' : 'Data'} sent to ${convertPhone}`
+          : `${conversionType.toUpperCase()} sub for ${billersCode}`
       };
 
+      const txRef = await addDoc(collection(db, 'transactions'), transactionData);
       await setDoc(userRef, { balances: newBalances }, { merge: true });
-      await addDoc(collection(db, 'transactions'), transactionData);
 
-      alert(`Conversion protocol initiated. ${conversionType === 'airtime' ? 'Airtime' : 'Data'} will be dispatched to ${convertPhone} after verification.`);
+      // Call Backend VTU API
+      try {
+        const response = await fetch('/api/vtu/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serviceID,
+            amount: finalAmount,
+            phoneNumber: userData.phoneNumber || '08000000000',
+            billersCode: (conversionType === 'cable' || conversionType === 'electricity') ? billersCode : convertPhone,
+            variation_code: conversionType === 'data' ? dataPackage.label.toLowerCase() : (conversionType === 'cable' ? 'dstv-padi' : (conversionType === 'electricity' ? 'prepaid' : undefined)),
+            request_id: txRef.id
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.code === '000' || result.response_description === 'TRANSACTION SUCCESSFUL') {
+          // Update transaction to completed
+          await setDoc(doc(db, 'transactions', txRef.id), { 
+            status: 'completed',
+            api_response: result.content || result
+          }, { merge: true });
+          alert(`Conversion protocol successful. Asset dispatched successfully.`);
+          setBillersCode('');
+          setVerifiedName(null);
+        } else {
+          // Log failure but keep as pending/failed for admin review
+          await setDoc(doc(db, 'transactions', txRef.id), { 
+            status: 'failed_api',
+            api_error: result.response_description || result.error
+          }, { merge: true });
+          alert(`API Sync Issue: ${result.response_description || 'Check network'}. Our audit team will review the pending request.`);
+        }
+      } catch (apiErr) {
+        console.error("VTU API Bridge Error:", apiErr);
+        // Keep as pending in Firestore for manual fallback
+        alert(`Neural network bridge timeout. Your request is logged as PENDING for manual dispatch.`);
+      }
+
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'conversion');
     } finally {
@@ -554,45 +651,107 @@ export default function Wallet() {
 
             {activeTab === 'conversion' && (
               <div className="space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="grid grid-cols-2 gap-4 md:gap-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                    <button 
                      onClick={() => setConversionType('airtime')}
-                     className={`p-6 md:p-10 border rounded-[2rem] md:rounded-[3rem] flex flex-col items-center gap-4 md:gap-6 group transition-all active:scale-95 shadow-xl md:shadow-2xl ${conversionType === 'airtime' ? 'bg-yellow-500/10 border-yellow-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
-                      <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center transition-all duration-700 shadow-2xl border border-white/5 ${conversionType === 'airtime' ? 'bg-yellow-500/20 scale-110 rotate-12' : 'bg-white/5'}`}>
-                        <Smartphone size={24} className={conversionType === 'airtime' ? 'text-yellow-400 md:w-10 md:h-10' : 'text-white/20 md:w-10 md:h-10'} />
+                     className={`p-4 md:p-6 border rounded-2xl md:rounded-3xl flex flex-col items-center gap-2 md:gap-4 group transition-all active:scale-95 shadow-lg ${conversionType === 'airtime' ? 'bg-yellow-500/10 border-yellow-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center transition-all bg-white/5 border border-white/5 ${conversionType === 'airtime' ? 'bg-yellow-500/20 scale-110' : ''}`}>
+                        <Smartphone size={20} className={conversionType === 'airtime' ? 'text-yellow-400' : 'text-white/20'} />
                       </div>
-                      <span className="font-black text-[8px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-white/60">Airtime Swap</span>
+                      <span className="font-black text-[7px] md:text-[9px] uppercase tracking-widest text-white/60">Airtime</span>
                    </button>
                    <button 
                      onClick={() => setConversionType('data')}
-                     className={`p-6 md:p-10 border rounded-[2rem] md:rounded-[3rem] flex flex-col items-center gap-4 md:gap-6 group transition-all active:scale-95 shadow-xl md:shadow-2xl ${conversionType === 'data' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
-                      <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center transition-all duration-700 shadow-2xl border border-white/5 ${conversionType === 'data' ? 'bg-blue-500/20 scale-110 -rotate-12' : 'bg-white/5'}`}>
-                        <Wifi size={24} className={conversionType === 'data' ? 'text-blue-400 md:w-10 md:h-10' : 'text-white/20 md:w-10 md:h-10'} />
+                     className={`p-4 md:p-6 border rounded-2xl md:rounded-3xl flex flex-col items-center gap-2 md:gap-4 group transition-all active:scale-95 shadow-lg ${conversionType === 'data' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center transition-all bg-white/5 border border-white/5 ${conversionType === 'data' ? 'bg-blue-500/20 scale-110' : ''}`}>
+                        <Wifi size={20} className={conversionType === 'data' ? 'text-blue-400' : 'text-white/20'} />
                       </div>
-                      <span className="font-black text-[8px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-white/60">Data Stream</span>
+                      <span className="font-black text-[7px] md:text-[9px] uppercase tracking-widest text-white/60">Data</span>
+                   </button>
+                   <button 
+                     onClick={() => { setConversionType('cable'); setUtilityService('dstv'); }}
+                     className={`p-4 md:p-6 border rounded-2xl md:rounded-3xl flex flex-col items-center gap-2 md:gap-4 group transition-all active:scale-95 shadow-lg ${conversionType === 'cable' ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center transition-all bg-white/5 border border-white/5 ${conversionType === 'cable' ? 'bg-purple-500/20 scale-110' : ''}`}>
+                        <Zap size={20} className={conversionType === 'cable' ? 'text-purple-400' : 'text-white/20'} />
+                      </div>
+                      <span className="font-black text-[7px] md:text-[9px] uppercase tracking-widest text-white/60">Cable</span>
+                   </button>
+                   <button 
+                     onClick={() => { setConversionType('electricity'); setUtilityService('ikeja-electric'); }}
+                     className={`p-4 md:p-6 border rounded-2xl md:rounded-3xl flex flex-col items-center gap-2 md:gap-4 group transition-all active:scale-95 shadow-lg ${conversionType === 'electricity' ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center transition-all bg-white/5 border border-white/5 ${conversionType === 'electricity' ? 'bg-emerald-500/20 scale-110' : ''}`}>
+                        <AlertCircle size={20} className={conversionType === 'electricity' ? 'text-emerald-400' : 'text-white/20'} />
+                      </div>
+                      <span className="font-black text-[7px] md:text-[9px] uppercase tracking-widest text-white/60">Utility</span>
                    </button>
                 </div>
                 
                 <div className="space-y-6 md:space-y-10">
+                  {/* Recipient Input */}
                   <div className="space-y-3 md:space-y-4">
-                    <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Receiver Link</label>
-                    <input 
-                      type="tel" 
-                      value={convertPhone}
-                      onChange={(e) => setConvertPhone(e.target.value)}
-                      placeholder="080 0000 0000" 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 md:py-7 px-6 md:px-10 focus:outline-none focus:border-yellow-500 transition-all font-display font-black text-xl md:text-3xl placeholder:text-white/5 tracking-tighter" 
-                    />
+                    <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">
+                      {conversionType === 'cable' ? 'Smartcard / IUC Number' : conversionType === 'electricity' ? 'Meter Number' : 'Receiver Link'}
+                    </label>
+                    <div className="flex gap-2">
+                      <input 
+                        type={conversionType === 'airtime' || conversionType === 'data' ? 'tel' : 'text'}
+                        value={conversionType === 'airtime' || conversionType === 'data' ? convertPhone : billersCode}
+                        onChange={(e) => conversionType === 'airtime' || conversionType === 'data' ? setConvertPhone(e.target.value) : setBillersCode(e.target.value)}
+                        placeholder={conversionType === 'cable' ? "Enter Smartcard No" : conversionType === 'electricity' ? "Enter Meter No" : "080 0000 0000"}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-yellow-500 transition-all font-display font-black text-lg md:text-2xl placeholder:text-white/5 tracking-tighter" 
+                      />
+                      {(conversionType === 'cable' || conversionType === 'electricity') && (
+                        <button 
+                          onClick={handleVerify}
+                          disabled={isVerifying}
+                          className="px-6 bg-white/5 border border-white/10 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-white/10"
+                        >
+                          {isVerifying ? 'Verifying...' : 'Verify'}
+                        </button>
+                      )}
+                    </div>
+                    {verifiedName && (
+                      <div className="animate-in fade-in slide-in-from-top-2 flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                        <AlertCircle size={14} className="text-emerald-400" />
+                        <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">{verifiedName}</span>
+                      </div>
+                    )}
                   </div>
 
+                  {/* Provider/Architecture Selection */}
                   <div className="space-y-3 md:space-y-4">
-                    <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Network Architecture</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4">
-                      {['MTN', 'AIRTEL', 'GLO', '9MOBILE'].map((n) => (
-                        <button key={n} onClick={() => setNetwork(n)} className={`py-3 md:py-4 border rounded-xl md:rounded-2xl text-[8px] md:text-[9px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] transition-all active:scale-95 shadow-lg ${network === n ? 'bg-yellow-500/20 border-yellow-400 text-yellow-400' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/60'}`}>
-                          {n}
-                        </button>
-                      ))}
+                    <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">
+                      {conversionType === 'airtime' || conversionType === 'data' ? 'Network Architecture' : 'Provider Node'}
+                    </label>
+                    <div className="relative group">
+                      <select 
+                        value={conversionType === 'airtime' || conversionType === 'data' ? network : utilityService}
+                        onChange={(e) => conversionType === 'airtime' || conversionType === 'data' ? setNetwork(e.target.value) : setUtilityService(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 px-6 md:px-8 focus:outline-none focus:border-yellow-500 transition-all appearance-none cursor-pointer font-black text-[10px] md:text-sm uppercase tracking-widest focus:bg-white/[0.08]"
+                      >
+                        {conversionType === 'airtime' || conversionType === 'data' ? (
+                          <>
+                            <option value="MTN" className="bg-slate-900">MTN NETWORK</option>
+                            <option value="AIRTEL" className="bg-slate-900">AIRTEL NETWORK</option>
+                            <option value="GLO" className="bg-slate-900">GLO NETWORK</option>
+                            <option value="9MOBILE" className="bg-slate-900">9MOBILE NETWORK</option>
+                          </>
+                        ) : conversionType === 'cable' ? (
+                          <>
+                            <option value="dstv" className="bg-slate-900">DSTV PROTOCOL</option>
+                            <option value="gotv" className="bg-slate-900">GOTV PROTOCOL</option>
+                            <option value="startimes" className="bg-slate-900">STARTIMES NETWORK</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="ikeja-electric" className="bg-slate-900">IKEJA ELECTRIC</option>
+                            <option value="eko-electric" className="bg-slate-900">EKO ELECTRIC</option>
+                            <option value="kano-electric" className="bg-slate-900">KANO ELECTRIC</option>
+                            <option value="portharcourt-electric" className="bg-slate-900">PH ELECTRIC</option>
+                          </>
+                        )}
+                      </select>
+                      <ArrowDownLeft size={16} className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
                     </div>
                   </div>
 
@@ -617,9 +776,9 @@ export default function Wallet() {
                     </div>
                   )}
 
-                  {conversionType === 'airtime' && (
+                  {(conversionType === 'airtime' || conversionType === 'cable' || conversionType === 'electricity') && (
                     <div className="space-y-3 md:space-y-4 animate-in slide-in-from-top-2 duration-300">
-                      <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Credit Value</label>
+                      <label className="text-[9px] md:text-[10px] uppercase font-black text-white/20 tracking-[0.3em] ml-2">Settlement Value</label>
                       <div className="relative group">
                          <span className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 text-yellow-400 font-display font-black text-lg md:text-xl">₦</span>
                          <input 

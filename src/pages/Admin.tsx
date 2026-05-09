@@ -454,13 +454,13 @@ export default function Admin() {
 
   return (
     <div className="space-y-8 pb-12">
-      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8 relative overflow-hidden bg-white/[0.02] p-8 md:p-12 rounded-[2.5rem] border border-white/5 shadow-2xl">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8 relative overflow-hidden bg-slate-100/50 dark:bg-white/[0.02] p-8 md:p-12 rounded-[2.5rem] border border-black/5 dark:border-white/5 shadow-2xl transition-colors duration-500">
         <div className="text-center lg:text-left z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-500/10 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-cyan-400 border border-cyan-500/20 mb-4">
-            <ShieldCheck size={10} className="fill-cyan-400" /> Root Access Granted
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-500/10 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 mb-4">
+            <ShieldCheck size={10} className="fill-cyan-500 dark:fill-cyan-400" /> Root Access Granted
           </div>
           <h1 className="text-4xl md:text-5xl font-display font-black tracking-tight text-gradient leading-none uppercase italic">COMMAND CENTRE.</h1>
-          <p className="text-white/30 font-light italic text-[10px] uppercase tracking-[0.3em] mt-2">NEXORA INTEL CORE 4.0 // SECURE PROTOCOL</p>
+          <p className="text-slate-500 dark:text-white/30 font-light italic text-[10px] uppercase tracking-[0.3em] mt-2">NEXORA INTEL CORE 4.0 // SECURE PROTOCOL</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-4 items-center z-10">
@@ -478,7 +478,7 @@ export default function Admin() {
         <div className="absolute -top-10 -right-20 w-80 h-80 bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none"></div>
       </header>
 
-      <div className="flex gap-2 p-1.5 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-hide relative">
+      <div className="flex gap-2 p-1.5 bg-slate-200/50 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-hide relative">
         {[
           { id: 'users', label: 'Network' },
           { id: 'recharges', label: 'Inflow' },
@@ -491,7 +491,7 @@ export default function Admin() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={`relative px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap z-10 ${
-              activeTab === tab.id ? 'text-white' : 'text-white/20 hover:text-white/60'
+              activeTab === tab.id ? 'text-white' : 'text-slate-400 dark:text-white/20 hover:text-slate-600 dark:hover:text-white/60'
             }`}
           >
             {activeTab === tab.id && (
